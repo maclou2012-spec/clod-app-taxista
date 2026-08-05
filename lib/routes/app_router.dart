@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../screens/onboarding/otp_verification_screen.dart';
 import '../screens/onboarding/phone_entry_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
 import '../theme/clod_theme.dart';
 
 class HomeTemporalScreen extends StatelessWidget {
-  const HomeTemporalScreen({super.key});
+  const HomeTemporalScreen({
+    super.key,
+    this.mensaje = 'Próxima pantalla en construcción',
+  });
+
+  final String mensaje;
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +20,7 @@ class HomeTemporalScreen extends StatelessWidget {
       backgroundColor: CLODColors.carbon,
       body: Center(
         child: Text(
-          'Próxima pantalla: verificación de código OTP',
+          mensaje,
           textAlign: TextAlign.center,
           style: CLODTextStyles.bodyLarge,
         ),
@@ -36,7 +42,22 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/otp',
-      builder: (context, state) => const HomeTemporalScreen(),
+      builder: (context, state) {
+        final telefono = state.extra as String? ?? '';
+        return OtpVerificationScreen(telefono: telefono);
+      },
+    ),
+    GoRoute(
+      path: '/registro-basico',
+      builder: (context, state) => const HomeTemporalScreen(
+        mensaje: 'Próxima pantalla: registro básico',
+      ),
+    ),
+    GoRoute(
+      path: '/home-temporal',
+      builder: (context, state) => const HomeTemporalScreen(
+        mensaje: 'Próxima pantalla: dashboard',
+      ),
     ),
   ],
 );

@@ -2,16 +2,23 @@ import 'package:flutter/foundation.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/secure_storage_service.dart';
+
+enum VerificacionResultado { exito, requiereRegistro, error }
 
 class AuthProvider extends ChangeNotifier {
-  AuthProvider({AuthService? authService, ApiService? apiService})
-      : _authService = authService ?? AuthService(),
-        _apiService = apiService ?? ApiService();
+  AuthProvider({
+    AuthService? authService,
+    ApiService? apiService,
+    SecureStorageService? secureStorageService,
+  })  : _authService = authService ?? AuthService(),
+        _apiService = apiService ?? ApiService(),
+        _secureStorageService =
+            secureStorageService ?? SecureStorageService();
 
   final AuthService _authService;
-  // Se usará en verificarCodigo() cuando conectemos el login contra el backend.
-  // ignore: unused_field
   final ApiService _apiService;
+  final SecureStorageService _secureStorageService;
 
   static const String _prefijoPais = '+52';
 
@@ -19,6 +26,7 @@ class AuthProvider extends ChangeNotifier {
   String? errorMensaje;
   String? verificationId;
   String telefonoCompleto = '';
+  String? idToken;
 
   Future<bool> enviarCodigo(String telefonoLocal) async {
     cargando = true;
@@ -52,8 +60,46 @@ class AuthProvider extends ChangeNotifier {
     return enviado;
   }
 
-  // TODO: implementar en el paso de la pantalla de OTP.
-  Future<bool> verificarCodigo(String codigo) async {
-    throw UnimplementedError('verificarCodigo se implementa en el siguiente paso');
+  Future<VerificacionResultado> verificarCodigo(String codigo) async {
+    cargando = true;
+    errorMensaje = null;
+    notifyListeners();
+
+    try {
+      final idTokenObtenido = await _authService.verificarCodigoOTP(
+        verificationId!,
+        codigo,
+      );
+
+      if (idTokenObtenido == null) {
+        errorMensaje = 'Código incorrecto, intenta de nuevo';
+        cargando = false;
+        notifyListeners();
+        return VerificacionResultado.error;
+      }
+
+      idToken = idTokenObtenido;
+
+      try {
+        final respuesta = await _apiService.login(idToken: idTokenObtenido);
+        final accessToken = respuesta['accessToken'] as String?;
+        final refreshToken = respuesta['refreshToken'] as String?;
+        if (accessToken != null && refreshToken != null) {
+          await _secureStorageService.guardarTokens(accessToken, refreshToken);
+        }
+        cargando = false;
+        notifyListeners();
+        return VerificacionResultado.exito;
+      } on RequiereRegistroException {
+        cargando = false;
+        notifyListeners();
+        return VerificacionResultado.requiereRegistro;
+      }
+    } catch (e) {
+      errorMensaje = 'Código incorrecto, intenta de nuevo';
+      cargando = false;
+      notifyListeners();
+      return VerificacionResultado.error;
+    }
   }
 }
