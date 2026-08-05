@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../screens/onboarding/otp_verification_screen.dart';
 import '../screens/onboarding/phone_entry_screen.dart';
+import '../screens/onboarding/registro_basico_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
 import '../theme/clod_theme.dart';
 
@@ -49,9 +50,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/registro-basico',
-      builder: (context, state) => const HomeTemporalScreen(
-        mensaje: 'Próxima pantalla: registro básico',
-      ),
+      builder: (context, state) => const RegistroBasicoScreen(),
     ),
     GoRoute(
       path: '/home-temporal',

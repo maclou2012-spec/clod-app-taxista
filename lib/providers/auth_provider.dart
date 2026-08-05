@@ -111,4 +111,41 @@ class AuthProvider extends ChangeNotifier {
       return VerificacionResultado.error;
     }
   }
+
+  Future<bool> completarRegistro({
+    required String nombre,
+    String? codigoReferido,
+  }) async {
+    if (idToken == null) {
+      errorMensaje = 'Sesión expirada, intenta de nuevo desde el inicio.';
+      notifyListeners();
+      return false;
+    }
+
+    cargando = true;
+    errorMensaje = null;
+    notifyListeners();
+
+    try {
+      final respuesta = await _apiService.login(
+        idToken: idToken!,
+        nombre: nombre,
+        rol: 'taxista',
+        codigoReferido: codigoReferido,
+      );
+      final accessToken = respuesta['accessToken'] as String?;
+      final refreshToken = respuesta['refreshToken'] as String?;
+      if (accessToken != null && refreshToken != null) {
+        await _secureStorageService.guardarTokens(accessToken, refreshToken);
+      }
+      cargando = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      errorMensaje = 'No se pudo completar el registro. Intenta de nuevo.';
+      cargando = false;
+      notifyListeners();
+      return false;
+    }
+  }
 }
