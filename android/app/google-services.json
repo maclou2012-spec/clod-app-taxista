@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "160857431021-i9ocf40tvrqj08s03p2m8rmvt4obt8pt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.clod.taxiclod",
+            "certificate_hash": "8ad237b339c3cfef0be3e514ba7a213b6f0762f1"
+          }
+        },
+        {
           "client_id": "160857431021-0o5dlq3hmqqckvocqiis7260222ti79b.apps.googleusercontent.com",
           "client_type": 3
         }
