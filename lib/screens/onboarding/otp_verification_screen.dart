@@ -94,7 +94,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Enviamos un código de 4 dígitos a +52 ${widget.telefono}',
+                'Enviamos un código de 6 dígitos a +52 ${widget.telefono}',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
                   color: CLODColors.carbon.withValues(alpha: 0.6),
@@ -102,14 +102,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               ),
               const SizedBox(height: 32),
               MaterialPinField(
-                length: 4,
+                length: 6,
                 pinController: _pinController,
                 enabled: !authProvider.cargando,
                 autoFocus: true,
                 keyboardType: TextInputType.number,
                 theme: MaterialPinTheme(
                   shape: MaterialPinShape.outlined,
-                  cellSize: const Size(56, 64),
+                  cellSize: const Size(46, 56),
+                  spacing: 6,
                   fillColor: Colors.white,
                   focusedFillColor: Colors.white,
                   filledFillColor: Colors.white,

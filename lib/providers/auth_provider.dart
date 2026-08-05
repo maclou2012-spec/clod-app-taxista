@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../services/api_service.dart';
@@ -34,7 +36,12 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     telefonoCompleto = '$_prefijoPais$telefonoLocal';
-    var enviado = false;
+
+    // verifyPhoneNumber (dentro de AuthService) resuelve su Future casi de
+    // inmediato, antes de que codeSent/verificationFailed lleguen — por eso
+    // no podemos basar el resultado en ese await. Usamos un Completer que
+    // solo se resuelve cuando el callback real dispara.
+    final completer = Completer<bool>();
 
     try {
       await _authService.enviarCodigoOTP(
@@ -42,22 +49,24 @@ class AuthProvider extends ChangeNotifier {
         onCodigoEnviado: (id) {
           verificationId = id;
           cargando = false;
-          enviado = true;
           notifyListeners();
+          if (!completer.isCompleted) completer.complete(true);
         },
         onError: (error) {
           errorMensaje = error;
           cargando = false;
           notifyListeners();
+          if (!completer.isCompleted) completer.complete(false);
         },
       );
     } catch (e) {
       errorMensaje = 'No se pudo enviar el código. Intenta de nuevo.';
       cargando = false;
       notifyListeners();
+      if (!completer.isCompleted) completer.complete(false);
     }
 
-    return enviado;
+    return completer.future;
   }
 
   Future<VerificacionResultado> verificarCodigo(String codigo) async {

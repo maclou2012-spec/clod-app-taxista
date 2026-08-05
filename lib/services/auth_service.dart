@@ -29,7 +29,13 @@ class AuthService {
       codeSent: (String verificationId, int? resendToken) {
         onCodigoEnviado(verificationId);
       },
-      codeAutoRetrievalTimeout: (String verificationId) {},
+      // Si el auto-llenado del SMS se agota (p.ej. Play Integrity/reCAPTCHA
+      // no disponible en un emulador) sin que codeSent haya llegado a
+      // disparar, igual dejamos pasar al usuario a ingresar el código
+      // manualmente en vez de dejar la pantalla cargando indefinidamente.
+      codeAutoRetrievalTimeout: (String verificationId) {
+        onCodigoEnviado(verificationId);
+      },
     );
   }
 
