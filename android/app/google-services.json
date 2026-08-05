@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "160857431021",
+    "project_id": "clod-v2",
+    "storage_bucket": "clod-v2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:160857431021:android:bfa4e0d87b88946cfa65e4",
+        "android_client_info": {
+          "package_name": "com.clod.taxiclod"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "160857431021-0o5dlq3hmqqckvocqiis7260222ti79b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9t_raklSq_Rh8BY-Sj_SnCtt4pbbfQkU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "160857431021-0o5dlq3hmqqckvocqiis7260222ti79b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
