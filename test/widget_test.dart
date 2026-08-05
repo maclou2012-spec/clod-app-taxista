@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:taxiclod/main.dart';
@@ -14,7 +15,9 @@ void main() {
       findsOneWidget,
     );
 
-    // Flush the splash screen's navigation timer before the test ends.
-    await tester.pump(const Duration(seconds: 3));
+    // Dispose the tree so the splash screen cancels its navigation timer,
+    // instead of letting it fire and navigate to the Firebase-dependent
+    // phone entry screen (Firebase isn't initialized in this test).
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../screens/onboarding/phone_entry_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
 import '../theme/clod_theme.dart';
 
@@ -13,7 +14,7 @@ class HomeTemporalScreen extends StatelessWidget {
       backgroundColor: CLODColors.carbon,
       body: Center(
         child: Text(
-          'Próxima pantalla: ingreso de teléfono',
+          'Próxima pantalla: verificación de código OTP',
           textAlign: TextAlign.center,
           style: CLODTextStyles.bodyLarge,
         ),
@@ -30,7 +31,11 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const SplashScreen(),
     ),
     GoRoute(
-      path: '/home-temporal',
+      path: '/telefono',
+      builder: (context, state) => const PhoneEntryScreen(),
+    ),
+    GoRoute(
+      path: '/otp',
       builder: (context, state) => const HomeTemporalScreen(),
     ),
   ],

@@ -1,7 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
+import 'providers/auth_provider.dart';
 import 'routes/app_router.dart';
 import 'theme/clod_theme.dart';
 
@@ -16,10 +18,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'TaxiCLOD',
-      theme: CLODTheme.dark,
-      routerConfig: appRouter,
+    return ChangeNotifierProvider<AuthProvider>(
+      create: (_) => AuthProvider(),
+      child: MaterialApp.router(
+        title: 'TaxiCLOD',
+        theme: CLODTheme.dark,
+        routerConfig: appRouter,
+      ),
     );
   }
 }
