@@ -81,7 +81,7 @@ class _TarifaScreenState extends State<TarifaScreen> {
             children: [
               const SizedBox(height: 48),
               Text(
-                'Tu tarifa',
+                'Tu Tarifa Mínima',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
                   color: CLODColors.carbon,
@@ -89,13 +89,33 @@ class _TarifaScreenState extends State<TarifaScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Tú la decides libremente. Podrás ajustarla cuando quieras.',
+                'Tú decides cuánto cobras por tu servicio, la tarifa base es '
+                'el monto mínimo que deseas cobrar a éso se le sumará el '
+                'costo por Km  el coso por minuto de viaje',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
                   color: CLODColors.carbon.withValues(alpha: 0.6),
                 ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 16),
+              Text(
+                'Tarifa de Viaje = Tarifa Mínima + (Distancia_km × '
+                'Costo_por_km) + (Tiempo_min × Costo_por_minuto)',
+                textAlign: TextAlign.center,
+                style: CLODTextStyles.bodySmall.copyWith(
+                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Escribe tu tarifa mínima, puedes ajustarla cuando quieras '
+                'desde tu panel de control:',
+                textAlign: TextAlign.center,
+                style: CLODTextStyles.bodyMedium.copyWith(
+                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -142,8 +162,10 @@ class _TarifaScreenState extends State<TarifaScreen> {
                   border: Border.all(color: CLODColors.azulCLOD),
                 ),
                 child: Text(
-                  'Puedes negociar libremente con cada pasajero. Esta es '
-                  'solo tu tarifa de referencia inicial.',
+                  'Nota: trata de ser lo más justo posible a la hora de '
+                  'cobrar tus servicios ya que es un factor que te referirá '
+                  'más clientes o por el contrario pueden verse afectadas '
+                  'tus ganancias.',
                   textAlign: TextAlign.center,
                   style: CLODTextStyles.bodyMedium.copyWith(
                     color: CLODColors.carbon,
