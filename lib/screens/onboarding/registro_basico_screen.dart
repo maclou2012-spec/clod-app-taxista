@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_error_text.dart';
+import '../../widgets/clod_primary_button.dart';
+import '../../widgets/clod_text_field.dart';
 
 class RegistroBasicoScreen extends StatefulWidget {
   const RegistroBasicoScreen({super.key});
@@ -81,23 +84,10 @@ class _RegistroBasicoScreenState extends State<RegistroBasicoScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              TextField(
+              CLODTextField(
                 controller: _nombreController,
                 textCapitalization: TextCapitalization.words,
-                style: CLODTextStyles.bodyLarge.copyWith(
-                  color: CLODColors.carbon,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Tu nombre y apellido',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: CLODColors.carbon.withValues(alpha: 0.15),
-                    ),
-                  ),
-                ),
+                hintText: 'Tu nombre y apellido',
               ),
               const SizedBox(height: 20),
               Text(
@@ -107,64 +97,21 @@ class _RegistroBasicoScreenState extends State<RegistroBasicoScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              TextField(
+              CLODTextField(
                 controller: _codigoReferidoController,
                 textCapitalization: TextCapitalization.characters,
-                style: CLODTextStyles.bodyLarge.copyWith(
-                  color: CLODColors.carbon,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Si alguien te invitó a CLOD',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: CLODColors.carbon.withValues(alpha: 0.15),
-                    ),
-                  ),
-                ),
+                hintText: 'Si alguien te invitó a CLOD',
               ),
               if (authProvider.errorMensaje != null) ...[
                 const SizedBox(height: 16),
-                Text(
-                  authProvider.errorMensaje!,
-                  textAlign: TextAlign.center,
-                  style: CLODTextStyles.bodySmall.copyWith(
-                    color: CLODColors.rojoUbicacion,
-                  ),
-                ),
+                CLODErrorText(authProvider.errorMensaje!),
               ],
               const SizedBox(height: 24),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: nombreValido && !authProvider.cargando
-                      ? () => _onCompletarRegistro(authProvider)
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: CLODColors.azulCLOD,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor:
-                        CLODColors.azulCLOD.withValues(alpha: 0.4),
-                  ),
-                  child: authProvider.cargando
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(
-                          'Completar registro',
-                          style: CLODTextStyles.bodyLarge.copyWith(
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
+              CLODPrimaryButton(
+                label: 'Completar registro',
+                cargando: authProvider.cargando,
+                habilitado: nombreValido,
+                onPressed: () => _onCompletarRegistro(authProvider),
               ),
               const SizedBox(height: 32),
             ],

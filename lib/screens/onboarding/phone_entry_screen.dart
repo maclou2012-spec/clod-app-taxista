@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_error_text.dart';
+import '../../widgets/clod_primary_button.dart';
+import '../../widgets/clod_text_field.dart';
 
 class PhoneEntryScreen extends StatefulWidget {
   const PhoneEntryScreen({super.key});
@@ -93,72 +96,28 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: TextField(
+                    child: CLODTextField(
                       controller: _telefonoController,
                       keyboardType: TextInputType.phone,
                       maxLength: 10,
+                      hintText: '10 dígitos',
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
                       ],
-                      style: CLODTextStyles.bodyLarge.copyWith(
-                        color: CLODColors.carbon,
-                      ),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        hintText: '10 dígitos',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: CLODColors.carbon.withValues(alpha: 0.15),
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                 ],
               ),
               if (authProvider.errorMensaje != null) ...[
                 const SizedBox(height: 12),
-                Text(
-                  authProvider.errorMensaje!,
-                  textAlign: TextAlign.center,
-                  style: CLODTextStyles.bodySmall.copyWith(
-                    color: CLODColors.rojoUbicacion,
-                  ),
-                ),
+                CLODErrorText(authProvider.errorMensaje!),
               ],
               const SizedBox(height: 24),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: telefonoValido && !authProvider.cargando
-                      ? () => _onEnviarCodigo(authProvider)
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: CLODColors.azulCLOD,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor:
-                        CLODColors.azulCLOD.withValues(alpha: 0.4),
-                  ),
-                  child: authProvider.cargando
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(
-                          'Enviar código',
-                          style: CLODTextStyles.bodyLarge.copyWith(
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
+              CLODPrimaryButton(
+                label: 'Enviar código',
+                cargando: authProvider.cargando,
+                habilitado: telefonoValido,
+                onPressed: () => _onEnviarCodigo(authProvider),
               ),
               const SizedBox(height: 32),
               Row(

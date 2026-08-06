@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_error_text.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   const OtpVerificationScreen({super.key, required this.telefono});
@@ -142,13 +143,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               ],
               if (authProvider.errorMensaje != null) ...[
                 const SizedBox(height: 16),
-                Text(
-                  authProvider.errorMensaje!,
-                  textAlign: TextAlign.center,
-                  style: CLODTextStyles.bodySmall.copyWith(
-                    color: CLODColors.rojoUbicacion,
-                  ),
-                ),
+                CLODErrorText(authProvider.errorMensaje!),
               ],
               const SizedBox(height: 32),
               Center(
