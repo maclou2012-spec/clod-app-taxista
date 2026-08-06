@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -141,6 +143,32 @@ class ApiService {
         'contacto_emergencia_nombre': ?contactoEmergenciaNombre,
         'contacto_emergencia_telefono': ?contactoEmergenciaTelefono,
       },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> subirFotoReferencia(File foto) async {
+    final formData = FormData.fromMap({
+      'foto': await MultipartFile.fromFile(foto.path),
+    });
+    final response = await _dio.post(
+      '/api/taxistas/verificacion-facial/referencia',
+      data: formData,
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> verificarIdentidadFacial(
+    File foto,
+    String tipo,
+  ) async {
+    final formData = FormData.fromMap({
+      'foto': await MultipartFile.fromFile(foto.path),
+      'tipo': tipo,
+    });
+    final response = await _dio.post(
+      '/api/taxistas/verificacion-facial/verificar',
+      data: formData,
     );
     return response.data as Map<String, dynamic>;
   }

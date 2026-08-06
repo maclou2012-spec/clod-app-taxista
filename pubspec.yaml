@@ -46,6 +46,7 @@ dependencies:
   go_router: ^17.4.0
   firebase_auth: ^6.5.7
   pin_code_fields: ^9.4.0
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:

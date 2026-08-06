@@ -7,6 +7,7 @@ import '../screens/onboarding/registro_basico_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
 import '../screens/registro/contrato_screen.dart';
 import '../screens/registro/datos_taxista_screen.dart';
+import '../screens/registro/verificacion_facial_screen.dart';
 import '../theme/clod_theme.dart';
 
 class HomeTemporalScreen extends StatelessWidget {
@@ -79,8 +80,15 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/verificacion-facial',
+      builder: (context, state) {
+        final tipo = state.extra as String? ?? 'onboarding';
+        return VerificacionFacialScreen(tipo: tipo);
+      },
+    ),
+    GoRoute(
+      path: '/vehiculo',
       builder: (context, state) => const HomeTemporalScreen(
-        mensaje: 'Próxima pantalla: verificación facial',
+        mensaje: 'Próxima pantalla: datos del vehículo',
       ),
     ),
     GoRoute(
