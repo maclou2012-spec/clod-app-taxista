@@ -172,4 +172,27 @@ class ApiService {
     );
     return response.data as Map<String, dynamic>;
   }
+
+  Future<Map<String, dynamic>> registrarVehiculo({
+    required String placas,
+    String? marca,
+    String? modelo,
+    int? anio,
+    String? color,
+    File? foto,
+  }) async {
+    final formData = FormData.fromMap({
+      'placas': placas,
+      'marca': ?marca,
+      'modelo': ?modelo,
+      'anio': ?anio?.toString(),
+      'color': ?color,
+      if (foto != null) 'foto': await MultipartFile.fromFile(foto.path),
+    });
+    final response = await _dio.post(
+      '/api/taxistas/vehiculo',
+      data: formData,
+    );
+    return response.data as Map<String, dynamic>;
+  }
 }
