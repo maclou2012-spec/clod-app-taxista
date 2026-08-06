@@ -147,6 +147,38 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> actualizarDatosPersonales({
+    required String nombre,
+    String? fechaNacimiento,
+    String? curp,
+    String? rfc,
+    String? direccionCalle,
+    String? direccionNumero,
+    String? direccionColonia,
+    String? direccionCp,
+    String? direccionCiudad,
+    String? contactoEmergenciaNombre,
+    String? contactoEmergenciaTelefono,
+  }) async {
+    final response = await _dio.put(
+      '/api/taxistas/perfil',
+      data: {
+        'nombre': nombre,
+        'fecha_nacimiento': ?fechaNacimiento,
+        'curp': ?curp,
+        'rfc': ?rfc,
+        'direccion_calle': ?direccionCalle,
+        'direccion_numero': ?direccionNumero,
+        'direccion_colonia': ?direccionColonia,
+        'direccion_cp': ?direccionCp,
+        'direccion_ciudad': ?direccionCiudad,
+        'contacto_emergencia_nombre': ?contactoEmergenciaNombre,
+        'contacto_emergencia_telefono': ?contactoEmergenciaTelefono,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> subirFotoReferencia(File foto) async {
     final formData = FormData.fromMap({
       'foto': await MultipartFile.fromFile(foto.path),
