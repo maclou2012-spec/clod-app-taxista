@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'secure_storage_service.dart';
 
@@ -51,6 +52,18 @@ class ApiService {
         },
       ),
     );
+
+    if (kDebugMode) {
+      _dio.interceptors.add(
+        LogInterceptor(
+          requestHeader: true,
+          requestBody: true,
+          responseHeader: false,
+          responseBody: true,
+          error: true,
+        ),
+      );
+    }
   }
 
   static const String baseUrl = 'https://api.clod.info';
@@ -113,6 +126,22 @@ class ApiService {
 
   Future<Map<String, dynamic>> obtenerUsuarioActual() async {
     final response = await _dio.get('/api/auth/me');
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> actualizarPerfilTaxista({
+    String? licenciaNumero,
+    String? contactoEmergenciaNombre,
+    String? contactoEmergenciaTelefono,
+  }) async {
+    final response = await _dio.put(
+      '/api/taxistas/perfil',
+      data: {
+        'licencia_numero': ?licenciaNumero,
+        'contacto_emergencia_nombre': ?contactoEmergenciaNombre,
+        'contacto_emergencia_telefono': ?contactoEmergenciaTelefono,
+      },
+    );
     return response.data as Map<String, dynamic>;
   }
 }
