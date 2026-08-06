@@ -112,6 +112,21 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> intentarSesionExistente() async {
+    final accessToken = await _secureStorageService.obtenerAccessToken();
+    if (accessToken == null) return false;
+
+    try {
+      // El interceptor de ApiService ya intenta refrescar el token
+      // automáticamente si este accessToken (15 min) venció.
+      await _apiService.obtenerUsuarioActual();
+      return true;
+    } catch (e) {
+      await _secureStorageService.borrarTokens();
+      return false;
+    }
+  }
+
   Future<bool> completarRegistro({
     required String nombre,
     String? codigoReferido,

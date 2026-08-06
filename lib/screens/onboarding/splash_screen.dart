@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../theme/clod_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -18,11 +20,15 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigationTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) {
-        context.go('/telefono');
-      }
-    });
+    _navigationTimer = Timer(const Duration(seconds: 2), _decidirNavegacion);
+  }
+
+  Future<void> _decidirNavegacion() async {
+    if (!mounted) return;
+    final authProvider = context.read<AuthProvider>();
+    final sesionValida = await authProvider.intentarSesionExistente();
+    if (!mounted) return;
+    context.go(sesionValida ? '/home-temporal' : '/telefono');
   }
 
   @override

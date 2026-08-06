@@ -110,4 +110,9 @@ class ApiService {
       rethrow;
     }
   }
+
+  Future<Map<String, dynamic>> obtenerUsuarioActual() async {
+    final response = await _dio.get('/api/auth/me');
+    return response.data as Map<String, dynamic>;
+  }
 }
