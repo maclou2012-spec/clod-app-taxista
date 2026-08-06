@@ -241,4 +241,18 @@ class ApiService {
     );
     return response.data as Map<String, dynamic>;
   }
+
+  Future<Map<String, dynamic>> actualizarLicencia({
+    String? licenciaNumero,
+    String? licenciaVigencia,
+  }) async {
+    final response = await _dio.put(
+      '/api/taxistas/perfil',
+      data: {
+        'licencia_numero': ?licenciaNumero,
+        'licencia_vigencia': ?licenciaVigencia,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
 }

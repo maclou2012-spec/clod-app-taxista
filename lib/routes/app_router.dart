@@ -8,6 +8,7 @@ import '../screens/onboarding/splash_screen.dart';
 import '../screens/registro/contrato_screen.dart';
 import '../screens/registro/datos_personales_screen.dart';
 import '../screens/registro/identificacion_oficial_screen.dart';
+import '../screens/registro/licencia_screen.dart';
 import '../screens/registro/vehiculo_screen.dart';
 import '../screens/registro/verificacion_facial_screen.dart';
 import '../theme/clod_theme.dart';
@@ -86,9 +87,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/licencia',
-      builder: (context, state) => const HomeTemporalScreen(
-        mensaje: 'Próxima pantalla: datos de licencia',
-      ),
+      builder: (context, state) => const LicenciaScreen(),
     ),
     GoRoute(
       path: '/verificacion-facial',
