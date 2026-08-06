@@ -285,4 +285,11 @@ class ApiService {
   Future<void> quitarPlus(int caracteristicaId) async {
     await _dio.delete('/api/taxistas/caracteristicas/$caracteristicaId');
   }
+
+  Future<void> actualizarTarifa(double tarifaBase) async {
+    await _dio.put(
+      '/api/taxistas/perfil',
+      data: {'tarifa_base': tarifaBase},
+    );
+  }
 }
