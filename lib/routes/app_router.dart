@@ -5,6 +5,7 @@ import '../screens/onboarding/otp_verification_screen.dart';
 import '../screens/onboarding/phone_entry_screen.dart';
 import '../screens/onboarding/registro_basico_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
+import '../screens/registro/contrato_screen.dart';
 import '../theme/clod_theme.dart';
 
 class HomeTemporalScreen extends StatelessWidget {
@@ -20,10 +21,25 @@ class HomeTemporalScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: CLODColors.carbon,
       body: Center(
-        child: Text(
-          mensaje,
-          textAlign: TextAlign.center,
-          style: CLODTextStyles.bodyLarge,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              mensaje,
+              textAlign: TextAlign.center,
+              style: CLODTextStyles.bodyLarge,
+            ),
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: () => context.go('/contrato'),
+              child: Text(
+                '[DEV] Ir a Contrato de licenciatario',
+                style: CLODTextStyles.bodySmall.copyWith(
+                  color: CLODColors.azulCLOD,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -51,6 +67,16 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/registro-basico',
       builder: (context, state) => const RegistroBasicoScreen(),
+    ),
+    GoRoute(
+      path: '/contrato',
+      builder: (context, state) => const ContratoScreen(),
+    ),
+    GoRoute(
+      path: '/registro-basico-taxista',
+      builder: (context, state) => const HomeTemporalScreen(
+        mensaje: 'Próxima pantalla: registro básico del taxista (Bloque 2)',
+      ),
     ),
     GoRoute(
       path: '/home-temporal',
