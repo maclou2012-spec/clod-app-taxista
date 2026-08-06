@@ -255,4 +255,34 @@ class ApiService {
     );
     return response.data as Map<String, dynamic>;
   }
+
+  Future<List<dynamic>> obtenerClasesServicio() async {
+    final response = await _dio.get('/api/catalogos/clases-servicio');
+    final data = response.data as Map<String, dynamic>;
+    return data['clases'] as List<dynamic>;
+  }
+
+  Future<List<dynamic>> obtenerCaracteristicasPlus() async {
+    final response = await _dio.get('/api/catalogos/caracteristicas-plus');
+    final data = response.data as Map<String, dynamic>;
+    return data['caracteristicas'] as List<dynamic>;
+  }
+
+  Future<void> seleccionarClase(int claseId) async {
+    await _dio.put(
+      '/api/taxistas/perfil',
+      data: {'clase_id': claseId},
+    );
+  }
+
+  Future<void> agregarPlus(int caracteristicaId) async {
+    await _dio.post(
+      '/api/taxistas/caracteristicas',
+      data: {'caracteristica_id': caracteristicaId},
+    );
+  }
+
+  Future<void> quitarPlus(int caracteristicaId) async {
+    await _dio.delete('/api/taxistas/caracteristicas/$caracteristicaId');
+  }
 }

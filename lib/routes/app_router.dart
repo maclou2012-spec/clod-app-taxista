@@ -9,6 +9,7 @@ import '../screens/registro/contrato_screen.dart';
 import '../screens/registro/datos_personales_screen.dart';
 import '../screens/registro/identificacion_oficial_screen.dart';
 import '../screens/registro/licencia_screen.dart';
+import '../screens/registro/servicio_screen.dart';
 import '../screens/registro/vehiculo_screen.dart';
 import '../screens/registro/verificacion_facial_screen.dart';
 import '../theme/clod_theme.dart';
@@ -102,8 +103,12 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/servicio',
+      builder: (context, state) => const ServicioScreen(),
+    ),
+    GoRoute(
+      path: '/tarifa',
       builder: (context, state) => const HomeTemporalScreen(
-        mensaje: 'Próxima pantalla: clase y plus del servicio',
+        mensaje: 'Próxima pantalla: tarifa propia',
       ),
     ),
     GoRoute(
