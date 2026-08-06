@@ -227,4 +227,18 @@ class ApiService {
     );
     return response.data as Map<String, dynamic>;
   }
+
+  Future<Map<String, dynamic>> registrarDocumento({
+    required String tipoDocumento,
+    required String urlArchivo,
+  }) async {
+    final response = await _dio.post(
+      '/api/taxistas/documentos',
+      data: {
+        'tipo_documento': tipoDocumento,
+        'url_archivo': urlArchivo,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
 }
