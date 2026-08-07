@@ -7,6 +7,7 @@ import '../screens/onboarding/registro_basico_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
 import '../screens/registro/contrato_screen.dart';
 import '../screens/registro/datos_personales_screen.dart';
+import '../screens/registro/en_revision_screen.dart';
 import '../screens/registro/identificacion_oficial_screen.dart';
 import '../screens/registro/licencia_screen.dart';
 import '../screens/registro/seguro_screen.dart';
@@ -117,9 +118,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/revision',
-      builder: (context, state) => const HomeTemporalScreen(
-        mensaje: 'Tu solicitud está en revisión',
-      ),
+      builder: (context, state) => const EnRevisionScreen(),
     ),
     GoRoute(
       path: '/home-temporal',

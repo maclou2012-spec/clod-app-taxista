@@ -286,6 +286,11 @@ class ApiService {
     await _dio.delete('/api/taxistas/caracteristicas/$caracteristicaId');
   }
 
+  Future<Map<String, dynamic>> obtenerEstadoRegistro() async {
+    final response = await _dio.get('/api/taxistas/estado-registro');
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<void> actualizarTarifa(
     double tarifaBase, {
     double? costoPorKm,
