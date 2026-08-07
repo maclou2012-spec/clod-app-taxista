@@ -17,6 +17,7 @@ import '../screens/registro/servicio_screen.dart';
 import '../screens/registro/tarifa_screen.dart';
 import '../screens/registro/vehiculo_screen.dart';
 import '../screens/registro/verificacion_facial_screen.dart';
+import '../screens/test_maps_screen.dart';
 import '../theme/clod_theme.dart';
 
 class HomeTemporalScreen extends StatelessWidget {
@@ -54,6 +55,15 @@ class HomeTemporalScreen extends StatelessWidget {
               onPressed: () => context.go('/membresia'),
               child: Text(
                 '[DEV] Ir a Membresía',
+                style: CLODTextStyles.bodySmall.copyWith(
+                  color: CLODColors.azulCLOD,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.go('/test-maps'),
+              child: Text(
+                '[DEV] Ir a Test Maps',
                 style: CLODTextStyles.bodySmall.copyWith(
                   color: CLODColors.azulCLOD,
                 ),
@@ -138,6 +148,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/membresia-activa',
       builder: (context, state) => const MembresiaActivaScreen(),
+    ),
+    GoRoute(
+      path: '/test-maps',
+      builder: (context, state) => const TestMapsScreen(),
     ),
     GoRoute(
       path: '/home-temporal',

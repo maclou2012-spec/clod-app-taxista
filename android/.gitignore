@@ -12,3 +12,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Contains the real Google Maps API key — see secrets.defaults.properties.
+secrets.properties
