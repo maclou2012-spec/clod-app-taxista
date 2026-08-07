@@ -28,7 +28,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final authProvider = context.read<AuthProvider>();
     final sesionValida = await authProvider.intentarSesionExistente();
     if (!mounted) return;
-    context.go(sesionValida ? '/home-temporal' : '/telefono');
+    context.go(sesionValida ? '/dashboard' : '/telefono');
   }
 
   @override

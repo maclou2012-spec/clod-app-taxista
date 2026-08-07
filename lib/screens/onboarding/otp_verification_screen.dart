@@ -60,7 +60,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       case VerificacionResultado.requiereRegistro:
         context.go('/registro-basico');
       case VerificacionResultado.exito:
-        context.go('/home-temporal');
+        context.go('/dashboard');
       case VerificacionResultado.error:
         _pinController.clear();
     }

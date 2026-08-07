@@ -291,6 +291,19 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> obtenerMiPerfilTaxista() async {
+    final response = await _dio.get('/api/taxistas/perfil');
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> cambiarDisponibilidad(bool disponible) async {
+    final response = await _dio.patch(
+      '/api/taxistas/disponibilidad',
+      data: {'disponible': disponible},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> obtenerEstadoMembresia() async {
     final response = await _dio.get('/api/membresias/estado');
     return response.data as Map<String, dynamic>;

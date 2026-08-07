@@ -65,7 +65,7 @@ class _VerificacionFacialScreenState extends State<VerificacionFacialScreen> {
           if (context.canPop()) {
             context.pop();
           } else {
-            context.go('/home-temporal');
+            context.go('/dashboard');
           }
         } else {
           setState(() {

@@ -43,7 +43,7 @@ class _RegistroBasicoScreenState extends State<RegistroBasicoScreen> {
       codigoReferido: codigoReferido.isEmpty ? null : codigoReferido,
     );
     if (exito && mounted) {
-      context.go('/home-temporal');
+      context.go('/dashboard');
     }
   }
 

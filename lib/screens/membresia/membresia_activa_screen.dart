@@ -182,7 +182,7 @@ class _MembresiaActivaScreenState extends State<MembresiaActivaScreen> {
                         const SizedBox(height: 32),
                         CLODPrimaryButton(
                           label: 'Ir a mi panel',
-                          onPressed: () => context.go('/home-temporal'),
+                          onPressed: () => context.go('/dashboard'),
                         ),
                         const SizedBox(height: 32),
                       ],

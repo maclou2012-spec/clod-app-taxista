@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../screens/onboarding/otp_verification_screen.dart';
@@ -7,6 +6,7 @@ import '../screens/onboarding/registro_basico_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
 import '../screens/membresia/membresia_activa_screen.dart';
 import '../screens/membresia/seleccion_membresia_screen.dart';
+import '../screens/operacion/dashboard_screen.dart';
 import '../screens/registro/contrato_screen.dart';
 import '../screens/registro/datos_personales_screen.dart';
 import '../screens/registro/en_revision_screen.dart';
@@ -18,63 +18,6 @@ import '../screens/registro/tarifa_screen.dart';
 import '../screens/registro/vehiculo_screen.dart';
 import '../screens/registro/verificacion_facial_screen.dart';
 import '../screens/test_maps_screen.dart';
-import '../theme/clod_theme.dart';
-
-class HomeTemporalScreen extends StatelessWidget {
-  const HomeTemporalScreen({
-    super.key,
-    this.mensaje = 'Próxima pantalla en construcción',
-  });
-
-  final String mensaje;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: CLODColors.carbon,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              mensaje,
-              textAlign: TextAlign.center,
-              style: CLODTextStyles.bodyLarge,
-            ),
-            const SizedBox(height: 24),
-            TextButton(
-              onPressed: () => context.go('/contrato'),
-              child: Text(
-                '[DEV] Ir a Contrato de licenciatario',
-                style: CLODTextStyles.bodySmall.copyWith(
-                  color: CLODColors.azulCLOD,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () => context.go('/membresia'),
-              child: Text(
-                '[DEV] Ir a Membresía',
-                style: CLODTextStyles.bodySmall.copyWith(
-                  color: CLODColors.azulCLOD,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () => context.go('/test-maps'),
-              child: Text(
-                '[DEV] Ir a Test Maps',
-                style: CLODTextStyles.bodySmall.copyWith(
-                  color: CLODColors.azulCLOD,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -154,10 +97,8 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const TestMapsScreen(),
     ),
     GoRoute(
-      path: '/home-temporal',
-      builder: (context, state) => const HomeTemporalScreen(
-        mensaje: 'Próxima pantalla: dashboard',
-      ),
+      path: '/dashboard',
+      builder: (context, state) => const DashboardScreen(),
     ),
   ],
 );
