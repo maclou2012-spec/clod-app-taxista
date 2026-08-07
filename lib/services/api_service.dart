@@ -37,6 +37,13 @@ class ApiService {
           if (error.response?.statusCode == 401 && !esReintento && !esRutaAuth) {
             final nuevoAccessToken = await _refrescarToken();
             if (nuevoAccessToken != null) {
+              // Un FormData ya se consume al enviarse una vez (multipart), así
+              // que no se puede reintentar con la misma instancia. El nuevo
+              // token ya quedó guardado: el usuario simplemente reintenta la
+              // acción (ej. tomar la foto de nuevo) y esa petición lo usará.
+              if (error.requestOptions.data is FormData) {
+                return handler.next(error);
+              }
               try {
                 final requestOptions = error.requestOptions;
                 requestOptions.headers['Authorization'] = 'Bearer $nuevoAccessToken';

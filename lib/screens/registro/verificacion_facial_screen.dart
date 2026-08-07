@@ -63,13 +63,14 @@ class _VerificacionFacialScreenState extends State<VerificacionFacialScreen> {
 
         if (esCoincidencia) {
           if (context.canPop()) {
-            context.pop();
+            context.pop(true);
           } else {
             context.go('/dashboard');
           }
         } else {
           setState(() {
-            _errorMensaje = 'No pudimos confirmar tu identidad, intenta de nuevo';
+            _errorMensaje =
+                'No pudimos confirmar tu identidad, intenta de nuevo';
           });
         }
       }
@@ -104,11 +105,7 @@ class _VerificacionFacialScreenState extends State<VerificacionFacialScreen> {
                 ),
                 const SizedBox(height: 32),
                 const _MarcoOvaladoPunteado(
-                  child: Icon(
-                    Icons.face,
-                    size: 96,
-                    color: CLODColors.azulCLOD,
-                  ),
+                  child: Icon(Icons.face, size: 96, color: CLODColors.azulCLOD),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -146,11 +143,7 @@ class _MarcoOvaladoPunteado extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _DashedOvalPainter(),
-      child: SizedBox(
-        width: 220,
-        height: 280,
-        child: Center(child: child),
-      ),
+      child: SizedBox(width: 220, height: 280, child: Center(child: child)),
     );
   }
 }

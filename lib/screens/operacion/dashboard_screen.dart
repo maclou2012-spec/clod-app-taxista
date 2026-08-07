@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/dev_menu_button.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -49,6 +51,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _onToggleDisponibilidad(bool nuevoValor) async {
+    if (nuevoValor) {
+      await _activarConVerificacion();
+    } else {
+      await _cambiarDisponibilidad(false);
+    }
+  }
+
+  Future<void> _activarConVerificacion() async {
+    setState(() => _disponible = true);
+
+    final resultado = await context.push<bool>(
+      '/verificacion-facial',
+      extra: 'inicio_turno',
+    );
+
+    if (!mounted) return;
+
+    if (resultado == true) {
+      await _cambiarDisponibilidad(true);
+    } else {
+      setState(() => _disponible = false);
+    }
+  }
+
+  Future<void> _cambiarDisponibilidad(bool nuevoValor) async {
     final valorAnterior = _disponible;
     setState(() {
       _disponible = nuevoValor;
@@ -59,8 +86,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await _apiService.cambiarDisponibilidad(nuevoValor);
     } on DioException catch (e) {
       final data = e.response?.data;
-      final mensaje =
-          data is Map<String, dynamic> ? data['mensaje'] as String? : null;
+      final mensaje = data is Map<String, dynamic>
+          ? data['mensaje'] as String?
+          : null;
       if (mounted) {
         setState(() => _disponible = valorAnterior);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -91,110 +119,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: CLODColors.carbon,
-      body: SafeArea(
-        child: _cargandoPerfil
-            ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    CLODColors.azulCLOD,
-                  ),
-                ),
-              )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: CLODColors.azulMarino,
-                          child: const Icon(
-                            Icons.person,
-                            color: CLODColors.grisClaro,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            'Hola, $_nombre',
-                            style: CLODTextStyles.headingMedium,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: CLODColors.azulMarino.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: _cargandoPerfil
+                ? Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        CLODColors.azulCLOD,
                       ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Disponibilidad voluntaria',
-                                  style: CLODTextStyles.bodyLarge,
-                                ),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundColor: CLODColors.azulMarino,
+                              child: const Icon(
+                                Icons.person,
+                                color: CLODColors.grisClaro,
                               ),
-                              Switch(
-                                value: _disponible,
-                                activeThumbColor: CLODColors.azulCLOD,
-                                onChanged: _cargandoDisponibilidad
-                                    ? null
-                                    : _onToggleDisponibilidad,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                'Hola, $_nombre',
+                                style: CLODTextStyles.headingMedium,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: CLODColors.azulMarino.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Disponibilidad voluntaria',
+                                      style: CLODTextStyles.bodyLarge,
+                                    ),
+                                  ),
+                                  Switch(
+                                    value: _disponible,
+                                    activeThumbColor: CLODColors.azulCLOD,
+                                    onChanged: _cargandoDisponibilidad
+                                        ? null
+                                        : _onToggleDisponibilidad,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _disponible ? 'Conectado' : 'Desconectado',
+                                  style: CLODTextStyles.bodySmall.copyWith(
+                                    color: CLODColors.grisClaro.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              _disponible ? 'Conectado' : 'Desconectado',
-                              style: CLODTextStyles.bodySmall.copyWith(
-                                color: CLODColors.grisClaro.withValues(
-                                  alpha: 0.6,
-                                ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _TarjetaEstadistica(
+                                etiqueta: 'Viajes hoy',
+                                valor: '0',
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _TarjetaEstadistica(
-                            etiqueta: 'Viajes hoy',
-                            valor: '0',
-                          ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _TarjetaEstadistica(
+                                etiqueta: 'Estimado',
+                                valor: '\$0',
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _TarjetaEstadistica(
-                            etiqueta: 'Estimado',
-                            valor: '\$0',
+                        const SizedBox(height: 40),
+                        Text(
+                          'Tú decides cuándo conectarte y qué solicitudes tomar',
+                          textAlign: TextAlign.center,
+                          style: CLODTextStyles.bodySmall.copyWith(
+                            color: CLODColors.grisClaro.withValues(alpha: 0.5),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 40),
-                    Text(
-                      'Tú decides cuándo conectarte y qué solicitudes tomar',
-                      textAlign: TextAlign.center,
-                      style: CLODTextStyles.bodySmall.copyWith(
-                        color: CLODColors.grisClaro.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+          ),
+          const DevMenuButton(),
+        ],
       ),
     );
   }
@@ -216,10 +250,7 @@ class _TarjetaEstadistica extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(
-            valor,
-            style: CLODTextStyles.headingMedium,
-          ),
+          Text(valor, style: CLODTextStyles.headingMedium),
           const SizedBox(height: 4),
           Text(
             etiqueta,
