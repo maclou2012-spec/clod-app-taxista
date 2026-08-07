@@ -9,6 +9,7 @@ import '../screens/registro/contrato_screen.dart';
 import '../screens/registro/datos_personales_screen.dart';
 import '../screens/registro/identificacion_oficial_screen.dart';
 import '../screens/registro/licencia_screen.dart';
+import '../screens/registro/seguro_screen.dart';
 import '../screens/registro/servicio_screen.dart';
 import '../screens/registro/tarifa_screen.dart';
 import '../screens/registro/vehiculo_screen.dart';
@@ -112,8 +113,12 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/seguro',
+      builder: (context, state) => const SeguroScreen(),
+    ),
+    GoRoute(
+      path: '/revision',
       builder: (context, state) => const HomeTemporalScreen(
-        mensaje: 'Próxima pantalla: póliza de seguro',
+        mensaje: 'Tu solicitud está en revisión',
       ),
     ),
     GoRoute(
