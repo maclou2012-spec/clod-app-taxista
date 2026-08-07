@@ -291,6 +291,19 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> obtenerEstadoMembresia() async {
+    final response = await _dio.get('/api/membresias/estado');
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> activarMembresia(String tipo) async {
+    final response = await _dio.post(
+      '/api/membresias/activar',
+      data: {'tipo': tipo},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<void> actualizarTarifa(
     double tarifaBase, {
     double? costoPorKm,

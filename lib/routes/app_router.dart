@@ -5,6 +5,8 @@ import '../screens/onboarding/otp_verification_screen.dart';
 import '../screens/onboarding/phone_entry_screen.dart';
 import '../screens/onboarding/registro_basico_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
+import '../screens/membresia/membresia_activa_screen.dart';
+import '../screens/membresia/seleccion_membresia_screen.dart';
 import '../screens/registro/contrato_screen.dart';
 import '../screens/registro/datos_personales_screen.dart';
 import '../screens/registro/en_revision_screen.dart';
@@ -43,6 +45,15 @@ class HomeTemporalScreen extends StatelessWidget {
               onPressed: () => context.go('/contrato'),
               child: Text(
                 '[DEV] Ir a Contrato de licenciatario',
+                style: CLODTextStyles.bodySmall.copyWith(
+                  color: CLODColors.azulCLOD,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.go('/membresia'),
+              child: Text(
+                '[DEV] Ir a Membresía',
                 style: CLODTextStyles.bodySmall.copyWith(
                   color: CLODColors.azulCLOD,
                 ),
@@ -119,6 +130,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/revision',
       builder: (context, state) => const EnRevisionScreen(),
+    ),
+    GoRoute(
+      path: '/membresia',
+      builder: (context, state) => const SeleccionMembresiaScreen(),
+    ),
+    GoRoute(
+      path: '/membresia-activa',
+      builder: (context, state) => const MembresiaActivaScreen(),
     ),
     GoRoute(
       path: '/home-temporal',
