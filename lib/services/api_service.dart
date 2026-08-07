@@ -16,13 +16,14 @@ class RequiereRegistroException implements Exception {
 
 class ApiService {
   ApiService({Dio? dio, SecureStorageService? secureStorageService})
-      : _secureStorageService = secureStorageService ?? SecureStorageService(),
-        _dio = dio ?? Dio(BaseOptions(baseUrl: baseUrl)) {
+    : _secureStorageService = secureStorageService ?? SecureStorageService(),
+      _dio = dio ?? Dio(BaseOptions(baseUrl: baseUrl)) {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           if (options.path != '/api/auth/login') {
-            final accessToken = await _secureStorageService.obtenerAccessToken();
+            final accessToken = await _secureStorageService
+                .obtenerAccessToken();
             if (accessToken != null) {
               options.headers['Authorization'] = 'Bearer $accessToken';
             }
@@ -31,10 +32,14 @@ class ApiService {
         },
         onError: (error, handler) async {
           final path = error.requestOptions.path;
-          final esReintento = error.requestOptions.extra['reintentoRefresh'] == true;
-          final esRutaAuth = path == '/api/auth/login' || path == '/api/auth/refresh';
+          final esReintento =
+              error.requestOptions.extra['reintentoRefresh'] == true;
+          final esRutaAuth =
+              path == '/api/auth/login' || path == '/api/auth/refresh';
 
-          if (error.response?.statusCode == 401 && !esReintento && !esRutaAuth) {
+          if (error.response?.statusCode == 401 &&
+              !esReintento &&
+              !esRutaAuth) {
             final nuevoAccessToken = await _refrescarToken();
             if (nuevoAccessToken != null) {
               // Un FormData ya se consume al enviarse una vez (multipart), así
@@ -46,7 +51,8 @@ class ApiService {
               }
               try {
                 final requestOptions = error.requestOptions;
-                requestOptions.headers['Authorization'] = 'Bearer $nuevoAccessToken';
+                requestOptions.headers['Authorization'] =
+                    'Bearer $nuevoAccessToken';
                 requestOptions.extra['reintentoRefresh'] = true;
                 final respuesta = await _dio.fetch(requestOptions);
                 return handler.resolve(respuesta);
@@ -98,7 +104,10 @@ class ApiService {
       final nuevoRefreshToken = data['refreshToken'] as String?;
       if (nuevoAccessToken == null || nuevoRefreshToken == null) return null;
 
-      await _secureStorageService.guardarTokens(nuevoAccessToken, nuevoRefreshToken);
+      await _secureStorageService.guardarTokens(
+        nuevoAccessToken,
+        nuevoRefreshToken,
+      );
       return nuevoAccessToken;
     } catch (e) {
       return null;
@@ -228,10 +237,7 @@ class ApiService {
       'color': ?color,
       if (foto != null) 'foto': await MultipartFile.fromFile(foto.path),
     });
-    final response = await _dio.post(
-      '/api/taxistas/vehiculo',
-      data: formData,
-    );
+    final response = await _dio.post('/api/taxistas/vehiculo', data: formData);
     return response.data as Map<String, dynamic>;
   }
 
@@ -241,10 +247,7 @@ class ApiService {
   }) async {
     final response = await _dio.post(
       '/api/taxistas/documentos',
-      data: {
-        'tipo_documento': tipoDocumento,
-        'url_archivo': urlArchivo,
-      },
+      data: {'tipo_documento': tipoDocumento, 'url_archivo': urlArchivo},
     );
     return response.data as Map<String, dynamic>;
   }
@@ -276,10 +279,7 @@ class ApiService {
   }
 
   Future<void> seleccionarClase(int claseId) async {
-    await _dio.put(
-      '/api/taxistas/perfil',
-      data: {'clase_id': claseId},
-    );
+    await _dio.put('/api/taxistas/perfil', data: {'clase_id': claseId});
   }
 
   Future<void> agregarPlus(int caracteristicaId) async {
@@ -321,6 +321,11 @@ class ApiService {
       '/api/membresias/activar',
       data: {'tipo': tipo},
     );
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> aceptarSolicitud(int solicitudId) async {
+    final response = await _dio.post('/api/solicitudes/$solicitudId/aceptar');
     return response.data as Map<String, dynamic>;
   }
 

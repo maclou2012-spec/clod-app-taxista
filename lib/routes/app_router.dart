@@ -15,6 +15,7 @@ import '../screens/registro/licencia_screen.dart';
 import '../screens/registro/seguro_screen.dart';
 import '../screens/registro/servicio_screen.dart';
 import '../screens/registro/tarifa_screen.dart';
+import '../screens/operacion/viaje_en_curso_screen.dart';
 import '../screens/registro/vehiculo_screen.dart';
 import '../screens/registro/verificacion_facial_screen.dart';
 import '../screens/test_maps_screen.dart';
@@ -22,10 +23,7 @@ import '../screens/test_maps_screen.dart';
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const SplashScreen(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
     GoRoute(
       path: '/telefono',
       builder: (context, state) => const PhoneEntryScreen(),
@@ -72,14 +70,8 @@ final GoRouter appRouter = GoRouter(
       path: '/servicio',
       builder: (context, state) => const ServicioScreen(),
     ),
-    GoRoute(
-      path: '/tarifa',
-      builder: (context, state) => const TarifaScreen(),
-    ),
-    GoRoute(
-      path: '/seguro',
-      builder: (context, state) => const SeguroScreen(),
-    ),
+    GoRoute(path: '/tarifa', builder: (context, state) => const TarifaScreen()),
+    GoRoute(path: '/seguro', builder: (context, state) => const SeguroScreen()),
     GoRoute(
       path: '/revision',
       builder: (context, state) => const EnRevisionScreen(),
@@ -99,6 +91,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/dashboard',
       builder: (context, state) => const DashboardScreen(),
+    ),
+    GoRoute(
+      path: '/viaje-en-curso',
+      builder: (context, state) => const ViajeEnCursoScreen(),
     ),
   ],
 );
