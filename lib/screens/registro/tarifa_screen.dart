@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
+import '../../widgets/clod_text_field.dart';
 
 class TarifaScreen extends StatefulWidget {
   const TarifaScreen({super.key});
@@ -17,6 +18,13 @@ class TarifaScreen extends StatefulWidget {
 class _TarifaScreenState extends State<TarifaScreen> {
   final ApiService _apiService = ApiService();
   final TextEditingController _montoController = TextEditingController();
+  final TextEditingController _costoPorKmController = TextEditingController();
+  final TextEditingController _costoPorMinutoController =
+      TextEditingController();
+
+  static final List<TextInputFormatter> _formateadoresDecimales = [
+    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+  ];
 
   String _montoTexto = '';
   bool _cargando = false;
@@ -33,6 +41,8 @@ class _TarifaScreenState extends State<TarifaScreen> {
   @override
   void dispose() {
     _montoController.dispose();
+    _costoPorKmController.dispose();
+    _costoPorMinutoController.dispose();
     super.dispose();
   }
 
@@ -47,7 +57,11 @@ class _TarifaScreenState extends State<TarifaScreen> {
     });
 
     try {
-      await _apiService.actualizarTarifa(_monto);
+      await _apiService.actualizarTarifa(
+        _monto,
+        costoPorKm: double.tryParse(_costoPorKmController.text),
+        costoPorMinuto: double.tryParse(_costoPorMinutoController.text),
+      );
       if (mounted) {
         context.go('/seguro');
       }
@@ -62,6 +76,20 @@ class _TarifaScreenState extends State<TarifaScreen> {
         setState(() => _cargando = false);
       }
     }
+  }
+
+  Widget _campoConEtiqueta(String etiqueta, Widget campo) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          etiqueta,
+          style: CLODTextStyles.bodyMedium.copyWith(color: CLODColors.carbon),
+        ),
+        const SizedBox(height: 8),
+        campo,
+      ],
+    );
   }
 
   @override
@@ -89,20 +117,11 @@ class _TarifaScreenState extends State<TarifaScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Tú decides cuánto cobras por tu servicio, la tarifa base es '
-                'el monto mínimo que deseas cobrar a éso se le sumará el '
-                'costo por Km  el coso por minuto de viaje',
+                'Define tu propio esquema de cobro. Estos valores son solo '
+                'tu referencia personal — tú decides cuánto cobrar en cada '
+                'viaje.',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Tarifa de Viaje = Tarifa Mínima + (Distancia_km × '
-                'Costo_por_km) + (Tiempo_min × Costo_por_minuto)',
-                textAlign: TextAlign.center,
-                style: CLODTextStyles.bodySmall.copyWith(
                   color: CLODColors.carbon.withValues(alpha: 0.6),
                 ),
               ),
@@ -128,11 +147,7 @@ class _TarifaScreenState extends State<TarifaScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d*\.?\d{0,2}'),
-                        ),
-                      ],
+                      inputFormatters: _formateadoresDecimales,
                       textAlign: TextAlign.center,
                       style: estiloMonto,
                       decoration: const InputDecoration(
@@ -152,6 +167,30 @@ class _TarifaScreenState extends State<TarifaScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 32),
+              _campoConEtiqueta(
+                'Costo por km (opcional)',
+                CLODTextField(
+                  controller: _costoPorKmController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: _formateadoresDecimales,
+                  hintText: '0.00',
+                ),
+              ),
+              const SizedBox(height: 20),
+              _campoConEtiqueta(
+                'Costo por minuto (opcional)',
+                CLODTextField(
+                  controller: _costoPorMinutoController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: _formateadoresDecimales,
+                  hintText: '0.00',
+                ),
               ),
               const SizedBox(height: 32),
               Container(

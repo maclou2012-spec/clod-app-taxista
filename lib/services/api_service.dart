@@ -286,10 +286,18 @@ class ApiService {
     await _dio.delete('/api/taxistas/caracteristicas/$caracteristicaId');
   }
 
-  Future<void> actualizarTarifa(double tarifaBase) async {
+  Future<void> actualizarTarifa(
+    double tarifaBase, {
+    double? costoPorKm,
+    double? costoPorMinuto,
+  }) async {
     await _dio.put(
       '/api/taxistas/perfil',
-      data: {'tarifa_base': tarifaBase},
+      data: {
+        'tarifa_base': tarifaBase,
+        'costo_por_km': ?costoPorKm,
+        'costo_por_minuto': ?costoPorMinuto,
+      },
     );
   }
 }
