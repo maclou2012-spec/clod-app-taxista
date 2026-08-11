@@ -1,23 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
-// Pantalla temporal para confirmar que la Google Maps API key configurada
-// vía secrets.properties carga el mapa correctamente. Eliminar cuando el
-// Bloque 4 (Operación diaria) integre el mapa real.
+// Pantalla temporal para confirmar que el token de Mapbox configurado vía
+// secrets.properties carga el mapa correctamente.
 class TestMapsScreen extends StatelessWidget {
   const TestMapsScreen({super.key});
 
-  static const CameraPosition _veracruz = CameraPosition(
-    target: LatLng(19.1738, -96.1342),
-    zoom: 13,
+  static final CameraViewportState _colima = CameraViewportState(
+    center: Point(coordinates: Position(-103.7247, 19.2433)),
+    zoom: 14,
   );
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: GoogleMap(
-        initialCameraPosition: _veracruz,
-      ),
-    );
+    return Scaffold(body: MapWidget(viewport: _colima));
   }
 }

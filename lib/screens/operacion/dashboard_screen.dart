@@ -1,16 +1,18 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 
 import '../../models/viaje_en_curso_args.dart';
 import '../../services/api_service.dart';
 import '../../services/location_tracking_service.dart';
 import '../../services/socket_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../utils/mapa_utils.dart';
 import '../../widgets/dev_menu_button.dart';
 
 String? _campoSolicitud(Map<String, dynamic> solicitud, List<String> llaves) {
@@ -37,12 +39,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _disponible = false;
   bool _cargandoDisponibilidad = false;
 
-  GoogleMapController? _mapController;
+  mapbox.MapboxMap? _mapboxMap;
+  mapbox.PointAnnotationManager? _pointAnnotationManager;
+  mapbox.PointAnnotation? _miUbicacionAnnotation;
+  Uint8List? _iconoUbicacion;
   final LocationTrackingService _locationService = LocationTrackingService();
   StreamSubscription<Map<String, dynamic>>? _nuevaSolicitudSub;
   bool _solicitudVisible = false;
 
-  static const LatLng _centroVeracruz = LatLng(19.1738, -96.1342);
+  static final mapbox.Point _centroVeracruz = mapbox.Point(
+    coordinates: mapbox.Position(-96.1342, 19.1738),
+  );
+
+  mapbox.Point _puntoDesdePosicion(Position? posicion) {
+    if (posicion == null) return _centroVeracruz;
+    return mapbox.Point(
+      coordinates: mapbox.Position(posicion.longitude, posicion.latitude),
+    );
+  }
 
   @override
   void initState() {
@@ -50,6 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _cargarPerfil();
     _socketService.conectar();
     _inicializarUbicacion();
+    _locationService.posicionActual.addListener(_onPosicionActualizada);
     _nuevaSolicitudSub = _socketService.nuevaSolicitud.listen(
       _onNuevaSolicitud,
     );
@@ -60,6 +75,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // El socket y el seguimiento de ubicación se quedan vivos aunque el
     // usuario navegue a otra pantalla — solo se detienen al desactivar la
     // disponibilidad, o el socket en un logout real (Bloque 5).
+    _locationService.posicionActual.removeListener(_onPosicionActualizada);
     _nuevaSolicitudSub?.cancel();
     super.dispose();
   }
@@ -85,13 +101,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
       if (mounted && _locationService.posicionActual.value == null) {
         _locationService.posicionActual.value = posicion;
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLng(LatLng(posicion.latitude, posicion.longitude)),
-        );
       }
     } catch (e) {
       // Sin ubicación disponible por ahora; el mapa se queda centrado por
       // defecto hasta que el GPS responda.
+    }
+  }
+
+  void _onPosicionActualizada() {
+    final posicion = _locationService.posicionActual.value;
+    if (posicion != null) {
+      _sincronizarMapa(posicion);
+    }
+  }
+
+  Future<void> _onMapaCreado(mapbox.MapboxMap mapboxMap) async {
+    _mapboxMap = mapboxMap;
+    _pointAnnotationManager = await mapboxMap.annotations
+        .createPointAnnotationManager();
+    _iconoUbicacion = await generarIconoUbicacion();
+    final posicionConocida = _locationService.posicionActual.value;
+    if (posicionConocida != null) {
+      await _sincronizarMapa(posicionConocida);
+    }
+  }
+
+  Future<void> _sincronizarMapa(Position posicion) async {
+    final punto = _puntoDesdePosicion(posicion);
+
+    _mapboxMap?.flyTo(
+      mapbox.CameraOptions(center: punto),
+      mapbox.MapAnimationOptions(duration: 500),
+    );
+
+    final manager = _pointAnnotationManager;
+    final icono = _iconoUbicacion;
+    if (manager == null || icono == null) return;
+
+    final anotacionActual = _miUbicacionAnnotation;
+    if (anotacionActual == null) {
+      _miUbicacionAnnotation = await manager.create(
+        mapbox.PointAnnotationOptions(geometry: punto, image: icono),
+      );
+    } else {
+      anotacionActual.geometry = punto;
+      await manager.update(anotacionActual);
     }
   }
 
@@ -290,49 +344,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       SizedBox(
                         height: MediaQuery.of(context).size.height * 0.4,
-                        child: ValueListenableBuilder<Position?>(
-                          valueListenable: _locationService.posicionActual,
-                          builder: (context, posicion, _) {
-                            return GoogleMap(
-                              initialCameraPosition: CameraPosition(
-                                target: posicion != null
-                                    ? LatLng(
-                                        posicion.latitude,
-                                        posicion.longitude,
-                                      )
-                                    : _centroVeracruz,
-                                zoom: 15,
-                              ),
-                              onMapCreated: (controller) {
-                                _mapController = controller;
-                                final posicionConocida =
-                                    _locationService.posicionActual.value;
-                                if (posicionConocida != null) {
-                                  controller.animateCamera(
-                                    CameraUpdate.newLatLng(
-                                      LatLng(
-                                        posicionConocida.latitude,
-                                        posicionConocida.longitude,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                              markers: posicion != null
-                                  ? {
-                                      Marker(
-                                        markerId: const MarkerId(
-                                          'mi_ubicacion',
-                                        ),
-                                        position: LatLng(
-                                          posicion.latitude,
-                                          posicion.longitude,
-                                        ),
-                                      ),
-                                    }
-                                  : {},
-                            );
-                          },
+                        child: mapbox.MapWidget(
+                          viewport: mapbox.CameraViewportState(
+                            center: _puntoDesdePosicion(
+                              _locationService.posicionActual.value,
+                            ),
+                            zoom: 15,
+                          ),
+                          onMapCreated: _onMapaCreado,
                         ),
                       ),
                       Expanded(
