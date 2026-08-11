@@ -1,7 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
+import 'config/mapbox_config.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'routes/app_router.dart';
@@ -10,6 +12,7 @@ import 'theme/clod_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  MapboxOptions.setAccessToken(mapboxPublicToken);
   runApp(const MyApp());
 }
 
