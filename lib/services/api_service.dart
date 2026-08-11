@@ -334,6 +334,12 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<List<dynamic>> obtenerSolicitudesPendientes() async {
+    final response = await _dio.get('/api/solicitudes/');
+    final data = response.data as Map<String, dynamic>;
+    return data['solicitudes'] as List<dynamic>;
+  }
+
   Future<void> actualizarTarifa(
     double tarifaBase, {
     double? costoPorKm,

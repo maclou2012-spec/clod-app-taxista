@@ -166,6 +166,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ).whenComplete(() => _solicitudVisible = false);
   }
 
+  Future<void> _revisarSolicitudesPendientes() async {
+    try {
+      final solicitudes = await _apiService.obtenerSolicitudesPendientes();
+      if (mounted && solicitudes.isNotEmpty) {
+        _onNuevaSolicitud(solicitudes.first as Map<String, dynamic>);
+      }
+    } catch (e) {
+      // Si falla, el taxista simplemente no ve la solicitud pendiente hasta
+      // que llegue una nueva por socket — no es un error bloqueante.
+    }
+  }
+
   Future<void> _aceptarSolicitud(
     BuildContext sheetContext,
     Map<String, dynamic> solicitud,
@@ -290,6 +302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (nuevoValor) {
         _socketService.emitirDisponible();
         _locationService.iniciar();
+        _revisarSolicitudesPendientes();
       } else {
         _socketService.emitirNoDisponible();
         _locationService.detener();
