@@ -354,6 +354,16 @@ class ApiService {
     return data['solicitudes'] as List<dynamic>;
   }
 
+  Future<List<dynamic>> obtenerHistorialViajes() async {
+    final response = await _dio.get('/api/solicitudes/historial');
+    final data = response.data;
+    if (data is List) return data;
+    final map = data as Map<String, dynamic>;
+    return (map['historial'] as List<dynamic>?) ??
+        (map['solicitudes'] as List<dynamic>?) ??
+        [];
+  }
+
   Future<void> actualizarTarifa(
     double tarifaBase, {
     double? costoPorKm,

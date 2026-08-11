@@ -148,6 +148,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           titulo: 'Mis documentos',
                           onTap: () => context.push('/revision'),
                         ),
+                        const SizedBox(height: 12),
+                        _FilaAcceso(
+                          icono: Icons.history,
+                          titulo: 'Historial de viajes',
+                          onTap: () => context.push('/historial'),
+                        ),
                       ],
                     ),
                   ),

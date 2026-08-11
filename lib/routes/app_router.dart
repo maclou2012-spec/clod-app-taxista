@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../models/viaje_en_curso_args.dart';
+import '../screens/cuenta/historial_screen.dart';
 import '../screens/cuenta/perfil_screen.dart';
 import '../screens/onboarding/otp_verification_screen.dart';
 import '../screens/onboarding/phone_entry_screen.dart';
@@ -89,6 +90,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/perfil',
       builder: (context, state) => const PerfilScreen(),
+    ),
+    GoRoute(
+      path: '/historial',
+      builder: (context, state) => const HistorialScreen(),
     ),
     GoRoute(
       path: '/membresia',
