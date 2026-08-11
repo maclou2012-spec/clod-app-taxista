@@ -364,6 +364,24 @@ class ApiService {
         [];
   }
 
+  Future<Map<String, dynamic>> obtenerMiCodigoReferido() async {
+    final response = await _dio.get('/api/referidos/mi-codigo');
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> obtenerProgresoReferidos() async {
+    final response = await _dio.get('/api/referidos/progreso');
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<List<dynamic>> obtenerListaReferidos() async {
+    final response = await _dio.get('/api/referidos/');
+    final data = response.data;
+    if (data is List) return data;
+    final map = data as Map<String, dynamic>;
+    return (map['referidos'] as List<dynamic>?) ?? [];
+  }
+
   Future<void> actualizarTarifa(
     double tarifaBase, {
     double? costoPorKm,

@@ -25,6 +25,7 @@ class DevMenuButton extends StatelessWidget {
     ('Viaje en curso', '/viaje-en-curso'),
     ('Perfil', '/perfil'),
     ('Historial de viajes', '/historial'),
+    ('Referidos', '/referidos'),
     ('Test Maps', '/test-maps'),
   ];
 
