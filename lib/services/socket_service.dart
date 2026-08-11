@@ -32,6 +32,21 @@ class SocketService {
   Stream<Map<String, dynamic>> get nuevaSolicitud =>
       _nuevaSolicitudController.stream;
 
+  final StreamController<Map<String, dynamic>> _viajeCanceladoController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get viajeCancelado =>
+      _viajeCanceladoController.stream;
+
+  // Solicitud del viaje en curso, si hay uno — se incluye automáticamente en
+  // cada emisión de ubicación para que el backend también transmita a la
+  // sala de esa solicitud específica.
+  int? _solicitudActivaId;
+
+  void marcarSolicitudActiva(int? solicitudId) {
+    _solicitudActivaId = solicitudId;
+  }
+
   Future<void> conectar() async {
     if (_socket != null) return;
 
@@ -68,6 +83,12 @@ class SocketService {
         if (data is Map) {
           _nuevaSolicitudController.add(Map<String, dynamic>.from(data));
         }
+      })
+      ..on('viaje_cancelado', (data) {
+        if (kDebugMode) debugPrint('SocketService: viaje_cancelado $data');
+        if (data is Map) {
+          _viajeCanceladoController.add(Map<String, dynamic>.from(data));
+        }
       });
   }
 
@@ -87,6 +108,18 @@ class SocketService {
   }
 
   void emitirUbicacion(double lat, double lng) {
-    _socket?.emit('actualizar_ubicacion', {'lat': lat, 'lng': lng});
+    _socket?.emit('actualizar_ubicacion', {
+      'lat': lat,
+      'lng': lng,
+      if (_solicitudActivaId != null) 'solicitudId': _solicitudActivaId,
+    });
+  }
+
+  void unirseSolicitud(int solicitudId) {
+    _socket?.emit('unirse_solicitud', solicitudId);
+  }
+
+  void salirSolicitud(int solicitudId) {
+    _socket?.emit('salir_solicitud', solicitudId);
   }
 }

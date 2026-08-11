@@ -1,16 +1,25 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../models/viaje_en_curso_args.dart';
 import '../../services/api_service.dart';
+import '../../services/location_tracking_service.dart';
 import '../../services/socket_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../widgets/dev_menu_button.dart';
+
+String? _campoSolicitud(Map<String, dynamic> solicitud, List<String> llaves) {
+  for (final llave in llaves) {
+    final valor = solicitud[llave];
+    if (valor != null) return valor.toString();
+  }
+  return null;
+}
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -29,8 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _cargandoDisponibilidad = false;
 
   GoogleMapController? _mapController;
-  Position? _posicionActual;
-  StreamSubscription<Position>? _posicionStreamSub;
+  final LocationTrackingService _locationService = LocationTrackingService();
   StreamSubscription<Map<String, dynamic>>? _nuevaSolicitudSub;
   bool _solicitudVisible = false;
 
@@ -49,9 +57,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
-    // El socket se queda vivo aunque el usuario navegue a otra pantalla —
-    // solo se desconecta en un logout real (Bloque 5).
-    _posicionStreamSub?.cancel();
+    // El socket y el seguimiento de ubicación se quedan vivos aunque el
+    // usuario navegue a otra pantalla — solo se detienen al desactivar la
+    // disponibilidad, o el socket en un logout real (Bloque 5).
     _nuevaSolicitudSub?.cancel();
     super.dispose();
   }
@@ -75,8 +83,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           accuracy: LocationAccuracy.high,
         ),
       );
-      if (mounted) {
-        setState(() => _posicionActual = posicion);
+      if (mounted && _locationService.posicionActual.value == null) {
+        _locationService.posicionActual.value = posicion;
         _mapController?.animateCamera(
           CameraUpdate.newLatLng(LatLng(posicion.latitude, posicion.longitude)),
         );
@@ -85,40 +93,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Sin ubicación disponible por ahora; el mapa se queda centrado por
       // defecto hasta que el GPS responda.
     }
-  }
-
-  void _iniciarSeguimientoUbicacion() {
-    _posicionStreamSub?.cancel();
-
-    final settings = defaultTargetPlatform == TargetPlatform.android
-        ? AndroidSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 50,
-            intervalDuration: const Duration(seconds: 12),
-          )
-        : const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 50,
-          );
-
-    _posicionStreamSub =
-        Geolocator.getPositionStream(locationSettings: settings).listen((
-          posicion,
-        ) {
-          if (!mounted) return;
-          setState(() => _posicionActual = posicion);
-          _mapController?.animateCamera(
-            CameraUpdate.newLatLng(
-              LatLng(posicion.latitude, posicion.longitude),
-            ),
-          );
-          _socketService.emitirUbicacion(posicion.latitude, posicion.longitude);
-        });
-  }
-
-  void _detenerSeguimientoUbicacion() {
-    _posicionStreamSub?.cancel();
-    _posicionStreamSub = null;
   }
 
   void _onNuevaSolicitud(Map<String, dynamic> solicitud) {
@@ -153,7 +127,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await _apiService.aceptarSolicitud(id);
       if (!mounted) return;
       navegadorHoja.pop();
-      context.push('/viaje-en-curso');
+
+      final args = ViajeEnCursoArgs(
+        solicitudId: id,
+        pasajeroNombre:
+            _campoSolicitud(solicitud, [
+              'pasajero_nombre',
+              'nombre_pasajero',
+              'nombre',
+            ]) ??
+            'Pasajero',
+        origenDireccion:
+            _campoSolicitud(solicitud, [
+              'origen_direccion',
+              'direccion_origen',
+              'origen',
+            ]) ??
+            '—',
+        destinoDireccion:
+            _campoSolicitud(solicitud, [
+              'destino_direccion',
+              'direccion_destino',
+              'destino',
+            ]) ??
+            '—',
+        tarifa:
+            _campoSolicitud(solicitud, ['tarifa_ofrecida', 'tarifa']) ?? '—',
+        horaInicio: DateTime.now(),
+      );
+
+      _socketService.marcarSolicitudActiva(id);
+      context.push('/viaje-en-curso', extra: args);
     } on DioException catch (e) {
       if (!mounted) return;
       navegadorHoja.pop();
@@ -231,10 +235,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await _apiService.cambiarDisponibilidad(nuevoValor);
       if (nuevoValor) {
         _socketService.emitirDisponible();
-        _iniciarSeguimientoUbicacion();
+        _locationService.iniciar();
       } else {
         _socketService.emitirNoDisponible();
-        _detenerSeguimientoUbicacion();
+        _locationService.detener();
       }
     } on DioException catch (e) {
       final data = e.response?.data;
@@ -286,29 +290,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       SizedBox(
                         height: MediaQuery.of(context).size.height * 0.4,
-                        child: GoogleMap(
-                          initialCameraPosition: CameraPosition(
-                            target: _posicionActual != null
-                                ? LatLng(
-                                    _posicionActual!.latitude,
-                                    _posicionActual!.longitude,
-                                  )
-                                : _centroVeracruz,
-                            zoom: 15,
-                          ),
-                          onMapCreated: (controller) =>
-                              _mapController = controller,
-                          markers: _posicionActual != null
-                              ? {
-                                  Marker(
-                                    markerId: const MarkerId('mi_ubicacion'),
-                                    position: LatLng(
-                                      _posicionActual!.latitude,
-                                      _posicionActual!.longitude,
+                        child: ValueListenableBuilder<Position?>(
+                          valueListenable: _locationService.posicionActual,
+                          builder: (context, posicion, _) {
+                            return GoogleMap(
+                              initialCameraPosition: CameraPosition(
+                                target: posicion != null
+                                    ? LatLng(
+                                        posicion.latitude,
+                                        posicion.longitude,
+                                      )
+                                    : _centroVeracruz,
+                                zoom: 15,
+                              ),
+                              onMapCreated: (controller) {
+                                _mapController = controller;
+                                final posicionConocida =
+                                    _locationService.posicionActual.value;
+                                if (posicionConocida != null) {
+                                  controller.animateCamera(
+                                    CameraUpdate.newLatLng(
+                                      LatLng(
+                                        posicionConocida.latitude,
+                                        posicionConocida.longitude,
+                                      ),
                                     ),
-                                  ),
+                                  );
                                 }
-                              : {},
+                              },
+                              markers: posicion != null
+                                  ? {
+                                      Marker(
+                                        markerId: const MarkerId(
+                                          'mi_ubicacion',
+                                        ),
+                                        position: LatLng(
+                                          posicion.latitude,
+                                          posicion.longitude,
+                                        ),
+                                      ),
+                                    }
+                                  : {},
+                            );
+                          },
                         ),
                       ),
                       Expanded(
@@ -516,21 +540,23 @@ class _TarjetaSolicitud extends StatelessWidget {
   final VoidCallback onIgnorar;
   final VoidCallback onAceptar;
 
-  String? _campo(List<String> llaves) {
-    for (final llave in llaves) {
-      final valor = solicitud[llave];
-      if (valor != null) return valor.toString();
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final nombrePasajero =
-        _campo(['pasajero_nombre', 'nombre_pasajero', 'nombre']) ?? 'Pasajero';
+        _campoSolicitud(solicitud, [
+          'pasajero_nombre',
+          'nombre_pasajero',
+          'nombre',
+        ]) ??
+        'Pasajero';
     final origen =
-        _campo(['origen_direccion', 'direccion_origen', 'origen']) ?? '—';
-    final tarifa = _campo(['tarifa_ofrecida', 'tarifa']);
+        _campoSolicitud(solicitud, [
+          'origen_direccion',
+          'direccion_origen',
+          'origen',
+        ]) ??
+        '—';
+    final tarifa = _campoSolicitud(solicitud, ['tarifa_ofrecida', 'tarifa']);
 
     return SafeArea(
       child: Padding(

@@ -329,6 +329,11 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> completarViaje(int solicitudId) async {
+    final response = await _dio.post('/api/solicitudes/$solicitudId/completar');
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<void> actualizarTarifa(
     double tarifaBase, {
     double? costoPorKm,

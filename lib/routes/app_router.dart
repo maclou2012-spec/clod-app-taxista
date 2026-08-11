@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../models/viaje_en_curso_args.dart';
 import '../screens/onboarding/otp_verification_screen.dart';
 import '../screens/onboarding/phone_entry_screen.dart';
 import '../screens/onboarding/registro_basico_screen.dart';
@@ -7,6 +8,8 @@ import '../screens/onboarding/splash_screen.dart';
 import '../screens/membresia/membresia_activa_screen.dart';
 import '../screens/membresia/seleccion_membresia_screen.dart';
 import '../screens/operacion/dashboard_screen.dart';
+import '../screens/operacion/resumen_viaje_screen.dart';
+import '../screens/operacion/viaje_en_curso_screen.dart';
 import '../screens/registro/contrato_screen.dart';
 import '../screens/registro/datos_personales_screen.dart';
 import '../screens/registro/en_revision_screen.dart';
@@ -15,7 +18,6 @@ import '../screens/registro/licencia_screen.dart';
 import '../screens/registro/seguro_screen.dart';
 import '../screens/registro/servicio_screen.dart';
 import '../screens/registro/tarifa_screen.dart';
-import '../screens/operacion/viaje_en_curso_screen.dart';
 import '../screens/registro/vehiculo_screen.dart';
 import '../screens/registro/verificacion_facial_screen.dart';
 import '../screens/test_maps_screen.dart';
@@ -94,7 +96,13 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/viaje-en-curso',
-      builder: (context, state) => const ViajeEnCursoScreen(),
+      builder: (context, state) =>
+          ViajeEnCursoScreen(args: state.extra as ViajeEnCursoArgs),
+    ),
+    GoRoute(
+      path: '/resumen-viaje',
+      builder: (context, state) =>
+          ResumenViajeScreen(args: state.extra as ViajeEnCursoArgs),
     ),
   ],
 );
