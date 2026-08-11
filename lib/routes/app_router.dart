@@ -1,6 +1,8 @@
 import 'package:go_router/go_router.dart';
 
 import '../models/viaje_en_curso_args.dart';
+import '../screens/cuenta/configuracion_screen.dart';
+import '../screens/cuenta/contacto_emergencia_screen.dart';
 import '../screens/cuenta/historial_screen.dart';
 import '../screens/cuenta/perfil_screen.dart';
 import '../screens/cuenta/referidos_screen.dart';
@@ -46,7 +48,8 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/contrato',
-      builder: (context, state) => const ContratoScreen(),
+      builder: (context, state) =>
+          ContratoScreen(soloLectura: state.extra == true),
     ),
     GoRoute(
       path: '/registro-basico-taxista',
@@ -99,6 +102,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/referidos',
       builder: (context, state) => const ReferidosScreen(),
+    ),
+    GoRoute(
+      path: '/configuracion',
+      builder: (context, state) => const ConfiguracionScreen(),
+    ),
+    GoRoute(
+      path: '/configuracion/contacto-emergencia',
+      builder: (context, state) => const ContactoEmergenciaScreen(),
     ),
     GoRoute(
       path: '/membresia',

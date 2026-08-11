@@ -160,6 +160,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           titulo: 'Mis referidos',
                           onTap: () => context.push('/referidos'),
                         ),
+                        const SizedBox(height: 12),
+                        _FilaAcceso(
+                          icono: Icons.settings,
+                          titulo: 'Configuración',
+                          onTap: () => context.push('/configuracion'),
+                        ),
                       ],
                     ),
                   ),

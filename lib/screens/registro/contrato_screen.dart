@@ -5,7 +5,11 @@ import '../../theme/clod_theme.dart';
 import '../../widgets/clod_primary_button.dart';
 
 class ContratoScreen extends StatefulWidget {
-  const ContratoScreen({super.key});
+  const ContratoScreen({super.key, this.soloLectura = false});
+
+  // En modo solo lectura (acceso desde Configuración) se oculta el checkbox
+  // y el botón de aceptar — solo se puede consultar el texto.
+  final bool soloLectura;
 
   @override
   State<ContratoScreen> createState() => _ContratoScreenState();
@@ -101,34 +105,36 @@ class _ContratoScreenState extends State<ContratoScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: () => setState(() => _aceptado = !_aceptado),
-                child: Row(
-                  children: [
-                    Checkbox(
-                      value: _aceptado,
-                      activeColor: CLODColors.azulCLOD,
-                      onChanged: (valor) =>
-                          setState(() => _aceptado = valor ?? false),
-                    ),
-                    Expanded(
-                      child: Text(
-                        'He leído y acepto los términos',
-                        style: CLODTextStyles.bodyMedium.copyWith(
-                          color: CLODColors.carbon,
+              if (!widget.soloLectura) ...[
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () => setState(() => _aceptado = !_aceptado),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: _aceptado,
+                        activeColor: CLODColors.azulCLOD,
+                        onChanged: (valor) =>
+                            setState(() => _aceptado = valor ?? false),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'He leído y acepto los términos',
+                          style: CLODTextStyles.bodyMedium.copyWith(
+                            color: CLODColors.carbon,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              CLODPrimaryButton(
-                label: 'Aceptar y continuar',
-                habilitado: _aceptado,
-                onPressed: _onAceptarYContinuar,
-              ),
+                const SizedBox(height: 8),
+                CLODPrimaryButton(
+                  label: 'Aceptar y continuar',
+                  habilitado: _aceptado,
+                  onPressed: _onAceptarYContinuar,
+                ),
+              ],
               const SizedBox(height: 24),
             ],
           ),
