@@ -12,7 +12,12 @@ import '../../widgets/clod_primary_button.dart';
 import '../../widgets/clod_text_field.dart';
 
 class VehiculoScreen extends StatefulWidget {
-  const VehiculoScreen({super.key});
+  const VehiculoScreen({super.key, this.datosIniciales});
+
+  // Si vienen datos (edición desde Perfil), se precargan los campos y al
+  // guardar se regresa a la pantalla anterior en vez de seguir el flujo de
+  // registro inicial.
+  final Map<String, dynamic>? datosIniciales;
 
   @override
   State<VehiculoScreen> createState() => _VehiculoScreenState();
@@ -33,9 +38,20 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
   bool _cargando = false;
   String? _errorMensaje;
 
+  bool get _modoEdicion => widget.datosIniciales != null;
+
   @override
   void initState() {
     super.initState();
+    final datos = widget.datosIniciales;
+    if (datos != null) {
+      _marcaController.text = (datos['marca'] ?? '').toString();
+      _modeloController.text = (datos['modelo'] ?? '').toString();
+      _anioController.text = (datos['anio'] ?? '').toString();
+      _colorController.text = (datos['color'] ?? '').toString();
+      _placasController.text = (datos['placas'] ?? '').toString();
+      _placas = _placasController.text;
+    }
     _placasController.addListener(() {
       setState(() => _placas = _placasController.text);
     });
@@ -82,7 +98,11 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
         foto: _foto,
       );
       if (mounted) {
-        context.go('/servicio');
+        if (_modoEdicion) {
+          context.pop();
+        } else {
+          context.go('/servicio');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -215,7 +235,7 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
               ],
               const SizedBox(height: 24),
               CLODPrimaryButton(
-                label: 'Continuar',
+                label: _modoEdicion ? 'Guardar cambios' : 'Continuar',
                 cargando: _cargando,
                 habilitado: _formularioValido,
                 onPressed: _onContinuar,

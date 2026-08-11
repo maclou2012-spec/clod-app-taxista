@@ -342,6 +342,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: CLODColors.carbon,
+      appBar: AppBar(
+        backgroundColor: CLODColors.carbon,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        // Acceso temporal a Perfil hasta que exista una navegación inferior
+        // real (tab bar), a evaluar al cierre del Bloque 5.
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: 'Perfil',
+            onPressed: () => context.push('/perfil'),
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           SafeArea(

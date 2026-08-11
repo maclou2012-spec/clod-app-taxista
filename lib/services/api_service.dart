@@ -334,6 +334,20 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>?> obtenerVehiculo() async {
+    try {
+      final response = await _dio.get('/api/taxistas/vehiculo');
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return (data['vehiculo'] as Map<String, dynamic>?) ?? data;
+      }
+      return null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
   Future<List<dynamic>> obtenerSolicitudesPendientes() async {
     final response = await _dio.get('/api/solicitudes/');
     final data = response.data as Map<String, dynamic>;

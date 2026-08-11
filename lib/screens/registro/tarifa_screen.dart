@@ -9,7 +9,12 @@ import '../../widgets/clod_primary_button.dart';
 import '../../widgets/clod_text_field.dart';
 
 class TarifaScreen extends StatefulWidget {
-  const TarifaScreen({super.key});
+  const TarifaScreen({super.key, this.datosIniciales});
+
+  // Si vienen datos (edición desde Perfil), se precargan los campos y al
+  // guardar se regresa a la pantalla anterior en vez de seguir el flujo de
+  // registro inicial.
+  final Map<String, dynamic>? datosIniciales;
 
   @override
   State<TarifaScreen> createState() => _TarifaScreenState();
@@ -30,9 +35,19 @@ class _TarifaScreenState extends State<TarifaScreen> {
   bool _cargando = false;
   String? _errorMensaje;
 
+  bool get _modoEdicion => widget.datosIniciales != null;
+
   @override
   void initState() {
     super.initState();
+    final datos = widget.datosIniciales;
+    if (datos != null) {
+      _montoController.text = (datos['tarifa_base'] ?? '').toString();
+      _costoPorKmController.text = (datos['costo_por_km'] ?? '').toString();
+      _costoPorMinutoController.text =
+          (datos['costo_por_minuto'] ?? '').toString();
+      _montoTexto = _montoController.text;
+    }
     _montoController.addListener(() {
       setState(() => _montoTexto = _montoController.text);
     });
@@ -63,7 +78,11 @@ class _TarifaScreenState extends State<TarifaScreen> {
         costoPorMinuto: double.tryParse(_costoPorMinutoController.text),
       );
       if (mounted) {
-        context.go('/seguro');
+        if (_modoEdicion) {
+          context.pop();
+        } else {
+          context.go('/seguro');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -217,7 +236,7 @@ class _TarifaScreenState extends State<TarifaScreen> {
               ],
               const SizedBox(height: 24),
               CLODPrimaryButton(
-                label: 'Continuar',
+                label: _modoEdicion ? 'Guardar cambios' : 'Continuar',
                 cargando: _cargando,
                 habilitado: _formularioValido,
                 onPressed: _onContinuar,

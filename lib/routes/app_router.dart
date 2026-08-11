@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../models/viaje_en_curso_args.dart';
+import '../screens/cuenta/perfil_screen.dart';
 import '../screens/onboarding/otp_verification_screen.dart';
 import '../screens/onboarding/phone_entry_screen.dart';
 import '../screens/onboarding/registro_basico_screen.dart';
@@ -66,17 +67,28 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/vehiculo',
-      builder: (context, state) => const VehiculoScreen(),
+      builder: (context, state) => VehiculoScreen(
+        datosIniciales: state.extra as Map<String, dynamic>?,
+      ),
     ),
     GoRoute(
       path: '/servicio',
       builder: (context, state) => const ServicioScreen(),
     ),
-    GoRoute(path: '/tarifa', builder: (context, state) => const TarifaScreen()),
+    GoRoute(
+      path: '/tarifa',
+      builder: (context, state) => TarifaScreen(
+        datosIniciales: state.extra as Map<String, dynamic>?,
+      ),
+    ),
     GoRoute(path: '/seguro', builder: (context, state) => const SeguroScreen()),
     GoRoute(
       path: '/revision',
       builder: (context, state) => const EnRevisionScreen(),
+    ),
+    GoRoute(
+      path: '/perfil',
+      builder: (context, state) => const PerfilScreen(),
     ),
     GoRoute(
       path: '/membresia',
