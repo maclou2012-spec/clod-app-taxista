@@ -166,6 +166,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           titulo: 'Configuración',
                           onTap: () => context.push('/configuracion'),
                         ),
+                        const SizedBox(height: 12),
+                        _FilaAcceso(
+                          icono: Icons.help_outline,
+                          titulo: 'Ayuda y soporte',
+                          onTap: () => context.push('/ayuda'),
+                        ),
                       ],
                     ),
                   ),

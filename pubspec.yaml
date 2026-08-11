@@ -49,6 +49,7 @@ dependencies:
   firebase_storage: ^13.4.6
   mapbox_maps_flutter: ^2.28.0
   share_plus: ^13.3.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

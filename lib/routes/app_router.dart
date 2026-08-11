@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../models/viaje_en_curso_args.dart';
+import '../screens/cuenta/ayuda_screen.dart';
 import '../screens/cuenta/configuracion_screen.dart';
 import '../screens/cuenta/contacto_emergencia_screen.dart';
 import '../screens/cuenta/historial_screen.dart';
@@ -110,6 +111,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/configuracion/contacto-emergencia',
       builder: (context, state) => const ContactoEmergenciaScreen(),
+    ),
+    GoRoute(
+      path: '/ayuda',
+      builder: (context, state) => const AyudaScreen(),
     ),
     GoRoute(
       path: '/membresia',

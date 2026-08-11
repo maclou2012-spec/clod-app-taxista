@@ -28,6 +28,7 @@ class DevMenuButton extends StatelessWidget {
     ('Referidos', '/referidos'),
     ('Configuración', '/configuracion'),
     ('Contacto de emergencia', '/configuracion/contacto-emergencia'),
+    ('Ayuda y soporte', '/ayuda'),
     ('Test Maps', '/test-maps'),
   ];
 
