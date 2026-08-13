@@ -371,15 +371,30 @@ class ApiService {
 
   Future<Map<String, dynamic>> obtenerProgresoReferidos() async {
     final response = await _dio.get('/api/referidos/progreso');
+    final data = response.data as Map<String, dynamic>;
+    return (data['progreso'] as Map<String, dynamic>?) ?? data;
+  }
+
+  Future<Map<String, dynamic>> solicitarPagoReferido(String clabe) async {
+    final response = await _dio.post(
+      '/api/referidos/solicitar-pago',
+      data: {'clabe': clabe},
+    );
     return response.data as Map<String, dynamic>;
   }
 
-  Future<List<dynamic>> obtenerListaReferidos() async {
-    final response = await _dio.get('/api/referidos/');
-    final data = response.data;
-    if (data is List) return data;
-    final map = data as Map<String, dynamic>;
-    return (map['referidos'] as List<dynamic>?) ?? [];
+  Future<Map<String, dynamic>> obtenerListaReferidos({int pagina = 1}) async {
+    final response = await _dio.get(
+      '/api/referidos/',
+      queryParameters: {'pagina': pagina},
+    );
+    final data = response.data as Map<String, dynamic>;
+    final lista = (data['referidos'] as List<dynamic>?) ?? [];
+    final totalRaw = data['total'] ?? data['total_referidos'] ?? lista.length;
+    final total = totalRaw is int
+        ? totalRaw
+        : int.tryParse('$totalRaw') ?? lista.length;
+    return {'referidos': lista, 'total': total};
   }
 
   Future<void> actualizarTarifa(

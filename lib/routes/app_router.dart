@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/viaje_en_curso_args.dart';
@@ -28,8 +29,15 @@ import '../screens/registro/vehiculo_screen.dart';
 import '../screens/registro/verificacion_facial_screen.dart';
 import '../screens/test_maps_screen.dart';
 
+// Permite que una pantalla (ej. ReferidosScreen) se entere cuando vuelve a
+// quedar visible tras hacer pop de la ruta que la cubría, para refrescar
+// datos que pudieron cambiar mientras estuvo tapada.
+final RouteObserver<PageRoute<dynamic>> routeObserver =
+    RouteObserver<PageRoute<dynamic>>();
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
+  observers: [routeObserver],
   routes: [
     GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
     GoRoute(
