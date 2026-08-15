@@ -47,6 +47,12 @@ class SocketService {
     _solicitudActivaId = solicitudId;
   }
 
+  // Refleja la última activación exitosa de disponibilidad. Vive aquí (no en
+  // DashboardScreen) porque el socket es el singleton que persiste entre
+  // pantallas y reconexiones — una reconexión puede ocurrir mientras
+  // DashboardScreen ni siquiera está montado.
+  bool _disponible = false;
+
   Future<void> conectar() async {
     if (_socket != null) return;
 
@@ -68,6 +74,18 @@ class SocketService {
       ..onConnect((_) {
         estado.value = EstadoConexionSocket.conectado;
         if (kDebugMode) debugPrint('SocketService: conectado');
+        // Cada conexión es una sala nueva en el backend — si el taxista
+        // seguía marcado disponible antes del corte, hay que re-unirlo sin
+        // que tenga que tocar el switch de nuevo.
+        if (_disponible) {
+          _socket?.emit('taxista_disponible');
+          if (kDebugMode) {
+            debugPrint(
+              'SocketService: reconexión con disponibilidad activa, '
+              're-emitiendo taxista_disponible',
+            );
+          }
+        }
       })
       ..onDisconnect((_) {
         estado.value = EstadoConexionSocket.reconectando;
@@ -96,14 +114,17 @@ class SocketService {
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
+    _disponible = false;
     estado.value = EstadoConexionSocket.desconectado;
   }
 
   void emitirDisponible() {
+    _disponible = true;
     _socket?.emit('taxista_disponible');
   }
 
   void emitirNoDisponible() {
+    _disponible = false;
     _socket?.emit('taxista_no_disponible');
   }
 
