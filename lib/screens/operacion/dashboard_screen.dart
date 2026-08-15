@@ -167,8 +167,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _revisarSolicitudesPendientes() async {
+    final posicion = _locationService.posicionActual.value;
+    if (posicion == null) return;
     try {
-      final solicitudes = await _apiService.obtenerSolicitudesPendientes();
+      final solicitudes = await _apiService.obtenerSolicitudesPendientes(
+        posicion.latitude,
+        posicion.longitude,
+      );
       if (mounted && solicitudes.isNotEmpty) {
         _onNuevaSolicitud(solicitudes.first as Map<String, dynamic>);
       }
@@ -474,6 +479,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () =>
+                                      context.push('/solicitudes-pendientes'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: CLODColors.azulCLOD,
+                                    side: const BorderSide(
+                                      color: CLODColors.azulCLOD,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.list_alt),
+                                  label: const Text('Ver solicitudes'),
+                                ),
                               ),
                               const SizedBox(height: 40),
                               Text(

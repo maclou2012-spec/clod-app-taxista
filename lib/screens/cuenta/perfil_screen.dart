@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../routes/app_router.dart';
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../widgets/clod_error_text.dart';
@@ -12,7 +13,7 @@ class PerfilScreen extends StatefulWidget {
   State<PerfilScreen> createState() => _PerfilScreenState();
 }
 
-class _PerfilScreenState extends State<PerfilScreen> {
+class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
   final ApiService _apiService = ApiService();
 
   bool _cargando = true;
@@ -25,6 +26,29 @@ class _PerfilScreenState extends State<PerfilScreen> {
   @override
   void initState() {
     super.initState();
+    _cargarDatos();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  // Se vuelve a cargar el vehículo/taxista al regresar de "Mi vehículo" para
+  // que número de taxi, foto y demás cambios recién guardados no se vean
+  // como si no hubieran quedado, aunque _cargando ya no muestre el spinner.
+  @override
+  void didPopNext() {
     _cargarDatos();
   }
 

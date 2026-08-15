@@ -227,6 +227,7 @@ class ApiService {
     String? modelo,
     int? anio,
     String? color,
+    String? numeroEconomico,
     File? foto,
   }) async {
     final formData = FormData.fromMap({
@@ -235,6 +236,7 @@ class ApiService {
       'modelo': ?modelo,
       'anio': ?anio?.toString(),
       'color': ?color,
+      'numero_economico': ?numeroEconomico,
       if (foto != null) 'foto': await MultipartFile.fromFile(foto.path),
     });
     final response = await _dio.post('/api/taxistas/vehiculo', data: formData);
@@ -293,6 +295,13 @@ class ApiService {
     await _dio.delete('/api/taxistas/caracteristicas/$caracteristicaId');
   }
 
+  Future<void> actualizarObservacionesServicio(String observaciones) async {
+    await _dio.put(
+      '/api/taxistas/perfil',
+      data: {'observaciones': observaciones},
+    );
+  }
+
   Future<Map<String, dynamic>> obtenerEstadoRegistro() async {
     final response = await _dio.get('/api/taxistas/estado-registro');
     return response.data as Map<String, dynamic>;
@@ -348,8 +357,14 @@ class ApiService {
     }
   }
 
-  Future<List<dynamic>> obtenerSolicitudesPendientes() async {
-    final response = await _dio.get('/api/solicitudes/');
+  Future<List<dynamic>> obtenerSolicitudesPendientes(
+    double lat,
+    double lng,
+  ) async {
+    final response = await _dio.get(
+      '/api/solicitudes/',
+      queryParameters: {'lat': lat, 'lng': lng},
+    );
     final data = response.data as Map<String, dynamic>;
     return data['solicitudes'] as List<dynamic>;
   }

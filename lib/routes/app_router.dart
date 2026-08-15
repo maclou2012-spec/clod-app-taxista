@@ -16,6 +16,7 @@ import '../screens/membresia/membresia_activa_screen.dart';
 import '../screens/membresia/seleccion_membresia_screen.dart';
 import '../screens/operacion/dashboard_screen.dart';
 import '../screens/operacion/resumen_viaje_screen.dart';
+import '../screens/operacion/solicitudes_pendientes_screen.dart';
 import '../screens/operacion/viaje_en_curso_screen.dart';
 import '../screens/registro/contrato_screen.dart';
 import '../screens/registro/datos_personales_screen.dart';
@@ -139,6 +140,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/dashboard',
       builder: (context, state) => const DashboardScreen(),
+    ),
+    GoRoute(
+      path: '/solicitudes-pendientes',
+      builder: (context, state) => const SolicitudesPendientesScreen(),
     ),
     GoRoute(
       path: '/viaje-en-curso',

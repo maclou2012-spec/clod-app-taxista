@@ -32,11 +32,20 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
   final TextEditingController _anioController = TextEditingController();
   final TextEditingController _colorController = TextEditingController();
   final TextEditingController _placasController = TextEditingController();
+  final TextEditingController _numeroEconomicoController =
+      TextEditingController();
+  final TextEditingController _observacionesController =
+      TextEditingController();
 
   String _placas = '';
   File? _foto;
+  String? _fotoUrlExistente;
   bool _cargando = false;
   String? _errorMensaje;
+
+  bool _cargandoCaracteristicas = true;
+  List<Map<String, dynamic>> _caracteristicas = [];
+  final Set<int> _plusSeleccionados = {};
 
   bool get _modoEdicion => widget.datosIniciales != null;
 
@@ -50,11 +59,15 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
       _anioController.text = (datos['anio'] ?? '').toString();
       _colorController.text = (datos['color'] ?? '').toString();
       _placasController.text = (datos['placas'] ?? '').toString();
+      _numeroEconomicoController.text =
+          (datos['numero_economico'] ?? '').toString();
+      _fotoUrlExistente = datos['foto_url'] as String?;
       _placas = _placasController.text;
     }
     _placasController.addListener(() {
       setState(() => _placas = _placasController.text);
     });
+    _cargarCaracteristicas();
   }
 
   @override
@@ -64,7 +77,55 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
     _anioController.dispose();
     _colorController.dispose();
     _placasController.dispose();
+    _numeroEconomicoController.dispose();
+    _observacionesController.dispose();
     super.dispose();
+  }
+
+  // El catálogo de plus, las observaciones y los plus ya activos viven en el
+  // perfil del taxista, no en los datosIniciales (que son solo el vehículo)
+  // — se cargan aparte.
+  Future<void> _cargarCaracteristicas() async {
+    try {
+      final catalogoFuture = _apiService.obtenerCaracteristicasPlus();
+      final perfilFuture = _apiService.obtenerMiPerfilTaxista();
+      final catalogo = await catalogoFuture;
+      final perfil = await perfilFuture;
+      if (!mounted) return;
+      final taxista = perfil['taxista'] as Map<String, dynamic>?;
+      final activos = (taxista?['caracteristicas'] as List<dynamic>?) ?? [];
+      setState(() {
+        _caracteristicas = catalogo.cast<Map<String, dynamic>>();
+        _observacionesController.text =
+            (taxista?['observaciones'] ?? '').toString();
+        _plusSeleccionados
+          ..clear()
+          ..addAll(activos.map((id) => id as int));
+        _cargandoCaracteristicas = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _cargandoCaracteristicas = false);
+    }
+  }
+
+  Future<void> _onTogglePlus(int caracteristicaId) async {
+    final estabaSeleccionado = _plusSeleccionados.contains(caracteristicaId);
+    setState(() {
+      if (estabaSeleccionado) {
+        _plusSeleccionados.remove(caracteristicaId);
+      } else {
+        _plusSeleccionados.add(caracteristicaId);
+      }
+    });
+    try {
+      if (estabaSeleccionado) {
+        await _apiService.quitarPlus(caracteristicaId);
+      } else {
+        await _apiService.agregarPlus(caracteristicaId);
+      }
+    } catch (e) {
+      // Guardado optimista: si falla, el taxista puede volver a tocar el chip.
+    }
   }
 
   bool get _formularioValido => _placas.trim().isNotEmpty;
@@ -95,7 +156,11 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
         modelo: _vacioAnulo(_modeloController),
         anio: int.tryParse(_anioController.text.trim()),
         color: _vacioAnulo(_colorController),
+        numeroEconomico: _vacioAnulo(_numeroEconomicoController),
         foto: _foto,
+      );
+      await _apiService.actualizarObservacionesServicio(
+        _observacionesController.text.trim(),
       );
       if (mounted) {
         if (_modoEdicion) {
@@ -225,9 +290,60 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+              _campoConEtiqueta(
+                'Número de taxi (opcional)',
+                CLODTextField(
+                  controller: _numeroEconomicoController,
+                  textCapitalization: TextCapitalization.characters,
+                  hintText: 'Ej. 042',
+                ),
+              ),
+              const SizedBox(height: 20),
               _AreaFotoVehiculo(
                 foto: _foto,
+                fotoUrlExistente: _fotoUrlExistente,
                 onTap: _tomarFotoVehiculo,
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'Servicios plus',
+                style: CLODTextStyles.bodyMedium.copyWith(
+                  color: CLODColors.carbon,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _cargandoCaracteristicas
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      ),
+                    )
+                  : Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: _caracteristicas.map((caracteristica) {
+                        final id = caracteristica['id'] as int;
+                        final nombre =
+                            caracteristica['nombre'] as String? ?? '';
+                        return _ChipSeleccionable(
+                          texto: nombre,
+                          seleccionado: _plusSeleccionados.contains(id),
+                          onTap: () => _onTogglePlus(id),
+                        );
+                      }).toList(),
+                    ),
+              const SizedBox(height: 20),
+              _campoConEtiqueta(
+                'Observaciones (opcional)',
+                CLODTextField(
+                  controller: _observacionesController,
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLines: 4,
+                  hintText: 'Ej. Acepto mascotas, tengo espacio para equipaje...',
+                ),
               ),
               if (_errorMensaje != null) ...[
                 const SizedBox(height: 16),
@@ -249,22 +365,66 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
   }
 }
 
-class _AreaFotoVehiculo extends StatelessWidget {
-  const _AreaFotoVehiculo({required this.foto, required this.onTap});
+class _ChipSeleccionable extends StatelessWidget {
+  const _ChipSeleccionable({
+    required this.texto,
+    required this.seleccionado,
+    required this.onTap,
+  });
 
-  final File? foto;
+  static const Color _colorBorde = Color(0xFFD3D1C7);
+
+  final String texto;
+  final bool seleccionado;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: seleccionado ? CLODColors.azulCLOD : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: seleccionado ? CLODColors.azulCLOD : _colorBorde,
+          ),
+        ),
+        child: Text(
+          texto,
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: seleccionado ? Colors.white : CLODColors.carbon,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AreaFotoVehiculo extends StatelessWidget {
+  const _AreaFotoVehiculo({
+    required this.foto,
+    required this.fotoUrlExistente,
+    required this.onTap,
+  });
+
+  final File? foto;
+  final String? fotoUrlExistente;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hayFoto = foto != null || fotoUrlExistente != null;
     return GestureDetector(
       onTap: onTap,
       child: CustomPaint(
-        painter: foto == null ? _DashedRectPainter() : null,
+        painter: hayFoto ? null : _DashedRectPainter(),
         child: SizedBox(
           height: 160,
           width: double.infinity,
-          child: foto == null
+          child: !hayFoto
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -286,12 +446,19 @@ class _AreaFotoVehiculo extends StatelessWidget {
                 )
               : ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.file(
-                    foto!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: 160,
-                  ),
+                  child: foto != null
+                      ? Image.file(
+                          foto!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: 160,
+                        )
+                      : Image.network(
+                          fotoUrlExistente!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: 160,
+                        ),
                 ),
         ),
       ),
