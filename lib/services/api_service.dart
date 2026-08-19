@@ -338,9 +338,32 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<void> marcarLlegada(int solicitudId) async {
+    await _dio.post('/api/solicitudes/$solicitudId/llegada');
+  }
+
+  Future<void> iniciarViaje(int solicitudId) async {
+    await _dio.post('/api/solicitudes/$solicitudId/iniciar');
+  }
+
   Future<Map<String, dynamic>> completarViaje(int solicitudId) async {
     final response = await _dio.post('/api/solicitudes/$solicitudId/completar');
     return response.data as Map<String, dynamic>;
+  }
+
+  Future<void> calificarViaje(
+    int viajeId,
+    int puntuacion,
+    String? comentario,
+  ) async {
+    await _dio.post(
+      '/api/calificaciones',
+      data: {
+        'viaje_id': viajeId,
+        'puntuacion': puntuacion,
+        'comentario': ?comentario,
+      },
+    );
   }
 
   Future<Map<String, dynamic>?> obtenerVehiculo() async {
@@ -355,6 +378,16 @@ class ApiService {
       if (e.response?.statusCode == 404) return null;
       rethrow;
     }
+  }
+
+  Future<Map<String, dynamic>?> obtenerMiViajeActivo() async {
+    final response = await _dio.get('/api/solicitudes/mi-viaje-activo');
+    final data = response.data;
+    if (data is! Map<String, dynamic>) return null;
+    final viaje = data['viaje'] ?? data['solicitud'];
+    if (viaje is Map<String, dynamic>) return viaje;
+    if (data['status'] == 'ok' || data.containsKey('estado')) return data;
+    return null;
   }
 
   Future<List<dynamic>> obtenerSolicitudesPendientes(

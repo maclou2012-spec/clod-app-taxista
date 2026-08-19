@@ -23,6 +23,45 @@ String? _campoSolicitud(Map<String, dynamic> solicitud, List<String> llaves) {
   return null;
 }
 
+double? _campoDecimalSolicitud(
+  Map<String, dynamic> solicitud,
+  List<String> llaves,
+) {
+  for (final llave in llaves) {
+    final valor = solicitud[llave];
+    if (valor is num) return valor.toDouble();
+    if (valor is String) {
+      final parseado = double.tryParse(valor);
+      if (parseado != null) return parseado;
+    }
+  }
+  return null;
+}
+
+// Las coordenadas pueden venir anidadas (solicitud['origen'] = {lat,lng}) o
+// planas (solicitud['origen_lat'], solicitud['origen_lng']).
+(double?, double?) _coordenadasSolicitud(
+  Map<String, dynamic> solicitud,
+  String prefijo,
+) {
+  final anidado = solicitud[prefijo];
+  final mapa = anidado is Map<String, dynamic> ? anidado : solicitud;
+  final lat = _campoDecimalSolicitud(mapa, [
+    'lat',
+    'latitud',
+    'latitude',
+    '${prefijo}_lat',
+  ]);
+  final lng = _campoDecimalSolicitud(mapa, [
+    'lng',
+    'lon',
+    'longitud',
+    'longitude',
+    '${prefijo}_lng',
+  ]);
+  return (lat, lng);
+}
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -199,6 +238,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!mounted) return;
       navegadorHoja.pop();
 
+      final (origenLat, origenLng) = _coordenadasSolicitud(solicitud, 'origen');
+      final (destinoLat, destinoLng) = _coordenadasSolicitud(
+        solicitud,
+        'destino',
+      );
+
       final args = ViajeEnCursoArgs(
         solicitudId: id,
         pasajeroNombre:
@@ -225,6 +270,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         tarifa:
             _campoSolicitud(solicitud, ['tarifa_ofrecida', 'tarifa']) ?? '—',
         horaInicio: DateTime.now(),
+        origenLat: origenLat,
+        origenLng: origenLng,
+        destinoLat: destinoLat,
+        destinoLng: destinoLng,
       );
 
       _socketService.marcarSolicitudActiva(id);

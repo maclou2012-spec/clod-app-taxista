@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/calificar_pasajero_args.dart';
 import '../models/viaje_en_curso_args.dart';
 import '../screens/cuenta/ayuda_screen.dart';
 import '../screens/cuenta/configuracion_screen.dart';
@@ -14,6 +15,7 @@ import '../screens/onboarding/registro_basico_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
 import '../screens/membresia/membresia_activa_screen.dart';
 import '../screens/membresia/seleccion_membresia_screen.dart';
+import '../screens/operacion/calificar_pasajero_screen.dart';
 import '../screens/operacion/dashboard_screen.dart';
 import '../screens/operacion/resumen_viaje_screen.dart';
 import '../screens/operacion/solicitudes_pendientes_screen.dart';
@@ -154,6 +156,11 @@ final GoRouter appRouter = GoRouter(
       path: '/resumen-viaje',
       builder: (context, state) =>
           ResumenViajeScreen(args: state.extra as ViajeEnCursoArgs),
+    ),
+    GoRoute(
+      path: '/calificar-pasajero',
+      builder: (context, state) =>
+          CalificarPasajeroScreen(args: state.extra as CalificarPasajeroArgs),
     ),
   ],
 );

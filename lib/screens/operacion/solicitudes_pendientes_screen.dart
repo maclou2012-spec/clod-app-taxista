@@ -30,6 +30,22 @@ double? _campoDecimal(Map<String, dynamic> mapa, List<String> llaves) {
   return null;
 }
 
+// Las coordenadas pueden venir anidadas (solicitud['origen'] = {lat,lng}) o
+// planas (solicitud['origen_lat'], solicitud['origen_lng']).
+(double?, double?) _coordenadas(Map<String, dynamic> solicitud, String prefijo) {
+  final anidado = solicitud[prefijo];
+  final mapa = anidado is Map<String, dynamic> ? anidado : solicitud;
+  final lat = _campoDecimal(mapa, ['lat', 'latitud', 'latitude', '${prefijo}_lat']);
+  final lng = _campoDecimal(mapa, [
+    'lng',
+    'lon',
+    'longitud',
+    'longitude',
+    '${prefijo}_lng',
+  ]);
+  return (lat, lng);
+}
+
 String _formatearDistancia(double km) {
   if (km < 1) return '${(km * 1000).round()} m';
   return '${km.toStringAsFixed(1)} km';
@@ -134,6 +150,9 @@ class _SolicitudesPendientesScreenState
       await _apiService.aceptarSolicitud(id);
       if (!mounted) return;
 
+      final (origenLat, origenLng) = _coordenadas(solicitud, 'origen');
+      final (destinoLat, destinoLng) = _coordenadas(solicitud, 'destino');
+
       final args = ViajeEnCursoArgs(
         solicitudId: id,
         pasajeroNombre:
@@ -160,6 +179,10 @@ class _SolicitudesPendientesScreenState
         tarifa:
             _campoTexto(solicitud, ['tarifa_ofrecida', 'tarifa']) ?? '—',
         horaInicio: DateTime.now(),
+        origenLat: origenLat,
+        origenLng: origenLng,
+        destinoLat: destinoLat,
+        destinoLng: destinoLng,
       );
 
       _socketService.marcarSolicitudActiva(id);
