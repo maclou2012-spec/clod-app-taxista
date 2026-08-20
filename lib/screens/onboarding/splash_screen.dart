@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../models/viaje_en_curso_args.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/fcm_service.dart';
 import '../../services/socket_service.dart';
 import '../../theme/clod_theme.dart';
 
@@ -80,6 +81,8 @@ class _SplashScreenState extends State<SplashScreen> {
       context.go('/telefono');
       return;
     }
+
+    unawaited(FcmService().inicializar());
 
     if (await _irAViajeActivo()) return;
     if (!mounted) return;

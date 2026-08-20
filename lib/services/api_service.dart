@@ -366,6 +366,13 @@ class ApiService {
     );
   }
 
+  Future<void> registrarTokenFcm(String token, String plataforma) async {
+    await _dio.post(
+      '/api/fcm-tokens/registrar',
+      data: {'token': token, 'plataforma': plataforma},
+    );
+  }
+
   Future<Map<String, dynamic>?> obtenerVehiculo() async {
     try {
       final response = await _dio.get('/api/taxistas/vehiculo');

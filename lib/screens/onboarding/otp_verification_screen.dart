@@ -6,6 +6,7 @@ import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../services/fcm_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../widgets/clod_error_text.dart';
 
@@ -60,6 +61,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       case VerificacionResultado.requiereRegistro:
         context.go('/registro-basico');
       case VerificacionResultado.exito:
+        unawaited(FcmService().inicializar());
         context.go('/dashboard');
       case VerificacionResultado.error:
         _pinController.clear();
