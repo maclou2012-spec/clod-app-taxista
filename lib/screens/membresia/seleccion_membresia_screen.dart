@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
@@ -47,11 +47,9 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
 
   String? _tipoSeleccionado;
   bool _cargando = false;
-  bool _verificando = false;
-  bool _pagoIniciado = false;
   String? _errorMensaje;
 
-  Future<void> _irAPagar() async {
+  Future<void> _pagar() async {
     final tipo = _tipoSeleccionado;
     if (tipo == null) return;
 
@@ -61,31 +59,21 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
     });
 
     try {
-      final url = await _apiService.crearSesionPago(tipo);
-      final exito = await launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
+      final clientSecret = await _apiService.crearPaymentIntent(tipo);
+
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'CLOD',
+        ),
       );
-      if (!exito) throw Exception('No se pudo abrir el navegador');
-      if (mounted) setState(() => _pagoIniciado = true);
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMensaje = 'No se pudo iniciar el pago. Intenta de nuevo.';
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _cargando = false);
-    }
-  }
+      await Stripe.instance.presentPaymentSheet();
 
-  Future<void> _verificarPago() async {
-    setState(() {
-      _verificando = true;
-      _errorMensaje = null;
-    });
+      // El webhook de Stripe necesita un instante para procesar el pago del
+      // lado del servidor antes de que la membresía quede reflejada.
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
 
-    try {
       final data = await _apiService.obtenerEstadoMembresia();
       if (!mounted) return;
       if (data['membresia_activa'] != null) {
@@ -94,16 +82,25 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
       }
       setState(() {
         _errorMensaje =
-            'Aún no detectamos tu pago. Espera unos segundos e inténtalo de nuevo.';
+            'Tu pago se procesó, pero la membresía aún no se refleja. '
+            'Intenta de nuevo en unos segundos.';
+      });
+    } on StripeException catch (e) {
+      if (!mounted) return;
+      final cancelado = e.error.code == FailureCode.Canceled;
+      setState(() {
+        _errorMensaje = cancelado
+            ? null
+            : (e.error.localizedMessage ?? 'No se pudo procesar el pago.');
       });
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMensaje = 'No se pudo verificar tu membresía. Intenta de nuevo.';
+          _errorMensaje = 'No se pudo iniciar el pago. Intenta de nuevo.';
         });
       }
     } finally {
-      if (mounted) setState(() => _verificando = false);
+      if (mounted) setState(() => _cargando = false);
     }
   }
 
@@ -143,9 +140,7 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
                 _TarjetaPlan(
                   plan: plan,
                   seleccionado: _tipoSeleccionado == plan.tipo,
-                  onTap: _pagoIniciado
-                      ? null
-                      : () => setState(() => _tipoSeleccionado = plan.tipo),
+                  onTap: () => setState(() => _tipoSeleccionado = plan.tipo),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -154,47 +149,14 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
                 CLODErrorText(_errorMensaje!),
               ],
               const SizedBox(height: 16),
-              if (_pagoIniciado) ...[
-                Text(
-                  'Completa tu pago en el navegador, y vuelve a la app '
-                  'cuando termines.',
-                  textAlign: TextAlign.center,
-                  style: CLODTextStyles.bodyMedium.copyWith(
-                    color: CLODColors.carbon.withValues(alpha: 0.6),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                CLODPrimaryButton(
-                  label: 'Ya pagué, verificar',
-                  cargando: _verificando,
-                  onPressed: _verificarPago,
-                ),
-                const SizedBox(height: 12),
-                Center(
-                  child: TextButton(
-                    onPressed: _verificando
-                        ? null
-                        : () => setState(() {
-                              _pagoIniciado = false;
-                              _errorMensaje = null;
-                            }),
-                    child: Text(
-                      'Elegir otro plan',
-                      style: CLODTextStyles.bodyMedium.copyWith(
-                        color: CLODColors.carbon.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ),
-                ),
-              ] else
-                CLODPrimaryButton(
-                  label: nombreSeleccionado != null
-                      ? 'Pagar $nombreSeleccionado'
-                      : 'Pagar',
-                  cargando: _cargando,
-                  habilitado: _tipoSeleccionado != null,
-                  onPressed: _irAPagar,
-                ),
+              CLODPrimaryButton(
+                label: nombreSeleccionado != null
+                    ? 'Pagar $nombreSeleccionado'
+                    : 'Pagar',
+                cargando: _cargando,
+                habilitado: _tipoSeleccionado != null,
+                onPressed: _pagar,
+              ),
               const SizedBox(height: 32),
             ],
           ),

@@ -325,17 +325,17 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<String> crearSesionPago(String tipo) async {
+  Future<String> crearPaymentIntent(String tipo) async {
     final response = await _dio.post(
-      '/api/stripe/crear-sesion',
+      '/api/stripe/crear-payment-intent',
       data: {'tipo': tipo},
     );
     final data = response.data;
     if (data is Map<String, dynamic>) {
-      final url = data['url'];
-      if (url is String) return url;
+      final clientSecret = data['clientSecret'];
+      if (clientSecret is String) return clientSecret;
     }
-    throw Exception('Respuesta inesperada al crear la sesión de pago');
+    throw Exception('Respuesta inesperada al crear el intento de pago');
   }
 
   Future<Map<String, dynamic>> aceptarSolicitud(int solicitudId) async {

@@ -50,6 +50,7 @@ dependencies:
   mapbox_maps_flutter: ^2.28.0
   share_plus: ^13.3.0
   url_launcher: ^6.3.2
+  flutter_stripe: ^11.5.0
 
 dev_dependencies:
   flutter_test:

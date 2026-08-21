@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -13,6 +14,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   MapboxOptions.setAccessToken(mapboxPublicToken);
+
+  Stripe.publishableKey =
+      'pk_test_51QWS2W08H3cXOv0qK2RLNVr2Sb6RQ1o5ifUD8RTXiipQYjqvDBe1zLidwWtIiAgZkCFff2DrSZjkpALSy2BF0NZC00op9M30Gb';
+  await Stripe.instance.applySettings();
+
   runApp(const MyApp());
 }
 
