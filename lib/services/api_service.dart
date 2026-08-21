@@ -325,12 +325,17 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> activarMembresia(String tipo) async {
+  Future<String> crearSesionPago(String tipo) async {
     final response = await _dio.post(
-      '/api/membresias/activar',
+      '/api/stripe/crear-sesion',
       data: {'tipo': tipo},
     );
-    return response.data as Map<String, dynamic>;
+    final data = response.data;
+    if (data is Map<String, dynamic>) {
+      final url = data['url'];
+      if (url is String) return url;
+    }
+    throw Exception('Respuesta inesperada al crear la sesión de pago');
   }
 
   Future<Map<String, dynamic>> aceptarSolicitud(int solicitudId) async {

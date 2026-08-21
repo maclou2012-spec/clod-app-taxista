@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
@@ -46,9 +47,11 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
 
   String? _tipoSeleccionado;
   bool _cargando = false;
+  bool _verificando = false;
+  bool _pagoIniciado = false;
   String? _errorMensaje;
 
-  Future<void> _onActivar() async {
+  Future<void> _irAPagar() async {
     final tipo = _tipoSeleccionado;
     if (tipo == null) return;
 
@@ -58,21 +61,49 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
     });
 
     try {
-      await _apiService.activarMembresia(tipo);
-      if (mounted) {
-        context.go('/membresia-activa');
-      }
+      final url = await _apiService.crearSesionPago(tipo);
+      final exito = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!exito) throw Exception('No se pudo abrir el navegador');
+      if (mounted) setState(() => _pagoIniciado = true);
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMensaje =
-              'No se pudo activar tu membresía. Intenta de nuevo.';
+          _errorMensaje = 'No se pudo iniciar el pago. Intenta de nuevo.';
         });
       }
     } finally {
-      if (mounted) {
-        setState(() => _cargando = false);
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  Future<void> _verificarPago() async {
+    setState(() {
+      _verificando = true;
+      _errorMensaje = null;
+    });
+
+    try {
+      final data = await _apiService.obtenerEstadoMembresia();
+      if (!mounted) return;
+      if (data['membresia_activa'] != null) {
+        context.go('/membresia-activa');
+        return;
       }
+      setState(() {
+        _errorMensaje =
+            'Aún no detectamos tu pago. Espera unos segundos e inténtalo de nuevo.';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMensaje = 'No se pudo verificar tu membresía. Intenta de nuevo.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _verificando = false);
     }
   }
 
@@ -112,7 +143,9 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
                 _TarjetaPlan(
                   plan: plan,
                   seleccionado: _tipoSeleccionado == plan.tipo,
-                  onTap: () => setState(() => _tipoSeleccionado = plan.tipo),
+                  onTap: _pagoIniciado
+                      ? null
+                      : () => setState(() => _tipoSeleccionado = plan.tipo),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -121,14 +154,47 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
                 CLODErrorText(_errorMensaje!),
               ],
               const SizedBox(height: 16),
-              CLODPrimaryButton(
-                label: nombreSeleccionado != null
-                    ? 'Activar $nombreSeleccionado'
-                    : 'Activar',
-                cargando: _cargando,
-                habilitado: _tipoSeleccionado != null,
-                onPressed: _onActivar,
-              ),
+              if (_pagoIniciado) ...[
+                Text(
+                  'Completa tu pago en el navegador, y vuelve a la app '
+                  'cuando termines.',
+                  textAlign: TextAlign.center,
+                  style: CLODTextStyles.bodyMedium.copyWith(
+                    color: CLODColors.carbon.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                CLODPrimaryButton(
+                  label: 'Ya pagué, verificar',
+                  cargando: _verificando,
+                  onPressed: _verificarPago,
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: TextButton(
+                    onPressed: _verificando
+                        ? null
+                        : () => setState(() {
+                              _pagoIniciado = false;
+                              _errorMensaje = null;
+                            }),
+                    child: Text(
+                      'Elegir otro plan',
+                      style: CLODTextStyles.bodyMedium.copyWith(
+                        color: CLODColors.carbon.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else
+                CLODPrimaryButton(
+                  label: nombreSeleccionado != null
+                      ? 'Pagar $nombreSeleccionado'
+                      : 'Pagar',
+                  cargando: _cargando,
+                  habilitado: _tipoSeleccionado != null,
+                  onPressed: _irAPagar,
+                ),
               const SizedBox(height: 32),
             ],
           ),
@@ -147,7 +213,7 @@ class _TarjetaPlan extends StatelessWidget {
 
   final _PlanMembresia plan;
   final bool seleccionado;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
