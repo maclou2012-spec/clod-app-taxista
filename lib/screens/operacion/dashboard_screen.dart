@@ -75,6 +75,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   bool _cargandoPerfil = true;
   String _nombre = '';
+  String? _fotoPerfilUrl;
   bool _disponible = false;
   bool _cargandoDisponibilidad = false;
 
@@ -308,6 +309,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         setState(() {
           _nombre = usuario?['nombre'] as String? ?? '';
+          _fotoPerfilUrl = usuario?['foto_perfil_url'] as String?;
           _disponible = disponibleRaw == true || disponibleRaw == 1;
           _cargandoPerfil = false;
         });
@@ -446,10 +448,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   CircleAvatar(
                                     radius: 24,
                                     backgroundColor: CLODColors.azulMarino,
-                                    child: const Icon(
-                                      Icons.person,
-                                      color: CLODColors.grisClaro,
-                                    ),
+                                    backgroundImage:
+                                        _fotoPerfilUrl != null &&
+                                            _fotoPerfilUrl!.isNotEmpty
+                                        ? NetworkImage(_fotoPerfilUrl!)
+                                        : null,
+                                    child:
+                                        _fotoPerfilUrl != null &&
+                                            _fotoPerfilUrl!.isNotEmpty
+                                        ? null
+                                        : const Icon(
+                                            Icons.person,
+                                            color: CLODColors.grisClaro,
+                                          ),
                                   ),
                                   const SizedBox(width: 16),
                                   Expanded(

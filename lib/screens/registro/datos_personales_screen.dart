@@ -8,29 +8,6 @@ import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
 import '../../widgets/clod_text_field.dart';
 
-String? _campoTexto(Map<String, dynamic> mapa, List<String> llaves) {
-  for (final llave in llaves) {
-    final valor = mapa[llave];
-    if (valor != null) return valor.toString();
-  }
-  return null;
-}
-
-int? _campoEntero(Map<String, dynamic> mapa, List<String> llaves) {
-  for (final llave in llaves) {
-    final valor = mapa[llave];
-    if (valor is int) return valor;
-    if (valor is num) return valor.toInt();
-    if (valor is String) {
-      final parseado = int.tryParse(valor);
-      if (parseado != null) return parseado;
-    }
-  }
-  return null;
-}
-
-const Color _colorBordeCampo = Color(0xFFD3D1C7);
-
 class DatosPersonalesScreen extends StatefulWidget {
   const DatosPersonalesScreen({super.key});
 
@@ -60,10 +37,6 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
   bool _cargando = false;
   String? _errorMensaje;
 
-  List<Map<String, dynamic>> _localidades = [];
-  int? _localidadId;
-  bool _cargandoLocalidades = true;
-
   @override
   void initState() {
     super.initState();
@@ -74,7 +47,6 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
       setState(() => _contactoTelefono = _contactoTelefonoController.text);
     });
     _cargarPerfilActual();
-    _cargarLocalidades();
   }
 
   Future<void> _cargarPerfilActual() async {
@@ -87,20 +59,6 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
       }
     } catch (e) {
       // El taxista puede escribir su nombre manualmente si esto falla.
-    }
-  }
-
-  Future<void> _cargarLocalidades() async {
-    try {
-      final datos = await _apiService.obtenerLocalidades();
-      if (mounted) {
-        setState(() {
-          _localidades = datos.whereType<Map<String, dynamic>>().toList();
-          _cargandoLocalidades = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _cargandoLocalidades = false);
     }
   }
 
@@ -178,7 +136,6 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
         direccionCiudad: _vacioAnulo(_ciudadController),
         contactoEmergenciaNombre: _vacioAnulo(_contactoNombreController),
         contactoEmergenciaTelefono: _contactoTelefono,
-        localidadId: _localidadId,
       );
       if (mounted) {
         context.go('/identificacion-oficial');
@@ -278,16 +235,6 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
                   textCapitalization: TextCapitalization.characters,
                   maxLength: 13,
                   hintText: '13 caracteres',
-                ),
-              ),
-              const SizedBox(height: 20),
-              _campoConEtiqueta(
-                'Localidad',
-                _SelectorLocalidad(
-                  localidades: _localidades,
-                  localidadId: _localidadId,
-                  cargando: _cargandoLocalidades,
-                  onChanged: (valor) => setState(() => _localidadId = valor),
                 ),
               ),
               const SizedBox(height: 32),
@@ -448,66 +395,6 @@ class _CampoFecha extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SelectorLocalidad extends StatelessWidget {
-  const _SelectorLocalidad({
-    required this.localidades,
-    required this.localidadId,
-    required this.cargando,
-    required this.onChanged,
-  });
-
-  final List<Map<String, dynamic>> localidades;
-  final int? localidadId;
-  final bool cargando;
-  final ValueChanged<int?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    // Solo agrupamos visualmente por estado (prefijo en la etiqueta) si hay
-    // más de uno activo — hoy solo Colima, así que se ve como una lista
-    // plana de localidades.
-    final estados = localidades
-        .map((localidad) => _campoTexto(localidad, ['estado']))
-        .whereType<String>()
-        .toSet();
-    final mostrarEstado = estados.length > 1;
-
-    final items = localidades.map((localidad) {
-      final id = _campoEntero(localidad, ['id']);
-      final nombre = _campoTexto(localidad, ['nombre']) ?? '—';
-      final estado = _campoTexto(localidad, ['estado']);
-      final etiqueta = mostrarEstado && estado != null
-          ? '$estado — $nombre'
-          : nombre;
-      return DropdownMenuItem<int>(value: id, child: Text(etiqueta));
-    }).toList();
-
-    return DropdownButtonFormField<int>(
-      initialValue: localidadId,
-      isExpanded: true,
-      items: items,
-      onChanged: cargando ? null : onChanged,
-      style: CLODTextStyles.bodyLarge.copyWith(color: CLODColors.carbon),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        hintText: cargando ? 'Cargando...' : 'Selecciona tu localidad',
-        hintStyle: CLODTextStyles.bodyLarge.copyWith(
-          color: CLODColors.carbon.withValues(alpha: 0.4),
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _colorBordeCampo),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _colorBordeCampo),
         ),
       ),
     );

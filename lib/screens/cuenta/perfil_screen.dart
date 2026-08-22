@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../routes/app_router.dart';
 import '../../services/api_service.dart';
@@ -15,11 +18,14 @@ class PerfilScreen extends StatefulWidget {
 
 class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
   final ApiService _apiService = ApiService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   bool _cargando = true;
   String? _errorMensaje;
   String _nombre = '';
   String? _claseNombre;
+  String? _fotoPerfilUrl;
+  bool _subiendoFoto = false;
   Map<String, dynamic>? _taxista;
   Map<String, dynamic>? _vehiculo;
 
@@ -79,6 +85,7 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
         setState(() {
           _nombre = usuario?['nombre'] as String? ?? '';
           _claseNombre = clase['nombre'] as String?;
+          _fotoPerfilUrl = usuario?['foto_perfil_url'] as String?;
           _taxista = taxista;
           _vehiculo = vehiculo;
           _cargando = false;
@@ -91,6 +98,71 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
           _cargando = false;
         });
       }
+    }
+  }
+
+  Future<void> _elegirFuenteFoto() async {
+    final fuente = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.camera_alt, color: CLODColors.azulCLOD),
+              title: Text(
+                'Tomar foto',
+                style: CLODTextStyles.bodyLarge.copyWith(
+                  color: CLODColors.carbon,
+                ),
+              ),
+              onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library, color: CLODColors.azulCLOD),
+              title: Text(
+                'Elegir de galería',
+                style: CLODTextStyles.bodyLarge.copyWith(
+                  color: CLODColors.carbon,
+                ),
+              ),
+              onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (fuente == null) return;
+    await _capturarYSubirFoto(fuente);
+  }
+
+  Future<void> _capturarYSubirFoto(ImageSource fuente) async {
+    final imagen = await _imagePicker.pickImage(
+      source: fuente,
+      imageQuality: 85,
+    );
+    if (imagen == null) return;
+
+    setState(() => _subiendoFoto = true);
+    try {
+      final url = await _apiService.subirFotoPerfil(File(imagen.path));
+      if (mounted) setState(() => _fotoPerfilUrl = url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo actualizar tu foto de perfil. Intenta de nuevo.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _subiendoFoto = false);
     }
   }
 
@@ -121,14 +193,10 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
                       children: [
                         const SizedBox(height: 16),
                         Center(
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundColor: CLODColors.azulMarino,
-                            child: const Icon(
-                              Icons.person,
-                              size: 40,
-                              color: CLODColors.grisClaro,
-                            ),
+                          child: _AvatarPerfil(
+                            fotoUrl: _fotoPerfilUrl,
+                            subiendo: _subiendoFoto,
+                            onTap: _elegirFuenteFoto,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -245,6 +313,71 @@ class _FilaAcceso extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AvatarPerfil extends StatelessWidget {
+  const _AvatarPerfil({
+    required this.fotoUrl,
+    required this.subiendo,
+    required this.onTap,
+  });
+
+  final String? fotoUrl;
+  final bool subiendo;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tieneFoto = fotoUrl != null && fotoUrl!.isNotEmpty;
+
+    return GestureDetector(
+      onTap: subiendo ? null : onTap,
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: CLODColors.azulMarino,
+            backgroundImage: tieneFoto ? NetworkImage(fotoUrl!) : null,
+            child: tieneFoto
+                ? null
+                : const Icon(
+                    Icons.person,
+                    size: 40,
+                    color: CLODColors.grisClaro,
+                  ),
+          ),
+          if (subiendo)
+            Positioned.fill(
+              child: CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.black.withValues(alpha: 0.4),
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: CLODColors.azulCLOD,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: const Icon(
+                Icons.camera_alt,
+                size: 14,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

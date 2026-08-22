@@ -219,6 +219,19 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<String> subirFotoPerfil(File foto) async {
+    final formData = FormData.fromMap({
+      'foto': await MultipartFile.fromFile(foto.path),
+    });
+    final response = await _dio.post('/api/perfil/foto', data: formData);
+    final data = response.data;
+    if (data is Map<String, dynamic>) {
+      final url = data['foto_perfil_url'];
+      if (url is String) return url;
+    }
+    throw Exception('Respuesta inesperada al subir la foto de perfil');
+  }
+
   Future<Map<String, dynamic>> verificarIdentidadFacial(
     File foto,
     String tipo,
@@ -270,12 +283,14 @@ class ApiService {
   Future<Map<String, dynamic>> actualizarLicencia({
     String? licenciaNumero,
     String? licenciaVigencia,
+    int? localidadId,
   }) async {
     final response = await _dio.put(
       '/api/taxistas/perfil',
       data: {
         'licencia_numero': ?licenciaNumero,
         'licencia_vigencia': ?licenciaVigencia,
+        'localidad_id': ?localidadId,
       },
     );
     return response.data as Map<String, dynamic>;
