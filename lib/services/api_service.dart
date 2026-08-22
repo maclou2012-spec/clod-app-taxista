@@ -175,6 +175,7 @@ class ApiService {
     String? direccionCiudad,
     String? contactoEmergenciaNombre,
     String? contactoEmergenciaTelefono,
+    int? localidadId,
   }) async {
     final response = await _dio.put(
       '/api/taxistas/perfil',
@@ -190,9 +191,21 @@ class ApiService {
         'direccion_ciudad': ?direccionCiudad,
         'contacto_emergencia_nombre': ?contactoEmergenciaNombre,
         'contacto_emergencia_telefono': ?contactoEmergenciaTelefono,
+        'localidad_id': ?localidadId,
       },
     );
     return response.data as Map<String, dynamic>;
+  }
+
+  Future<List<dynamic>> obtenerLocalidades() async {
+    final response = await _dio.get('/api/catalogos/localidades');
+    final data = response.data;
+    if (data is List) return data;
+    if (data is Map<String, dynamic>) {
+      final localidades = data['localidades'];
+      if (localidades is List) return localidades;
+    }
+    return const [];
   }
 
   Future<Map<String, dynamic>> subirFotoReferencia(File foto) async {
