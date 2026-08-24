@@ -15,6 +15,7 @@ import '../screens/onboarding/registro_basico_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
 import '../screens/membresia/datos_fiscales_screen.dart';
 import '../screens/membresia/membresia_activa_screen.dart';
+import '../screens/membresia/mis_pagos_screen.dart';
 import '../screens/membresia/seleccion_membresia_screen.dart';
 import '../screens/operacion/calificar_pasajero_screen.dart';
 import '../screens/operacion/dashboard_screen.dart';
@@ -139,6 +140,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/membresia-activa',
       builder: (context, state) => const MembresiaActivaScreen(),
+    ),
+    GoRoute(
+      path: '/mis-pagos',
+      builder: (context, state) => const MisPagosScreen(),
     ),
     GoRoute(
       path: '/test-maps',

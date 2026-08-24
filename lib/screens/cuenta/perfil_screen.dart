@@ -248,6 +248,12 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
                         ),
                         const SizedBox(height: 12),
                         _FilaAcceso(
+                          icono: Icons.receipt_long,
+                          titulo: 'Mis pagos y facturas',
+                          onTap: () => context.push('/mis-pagos'),
+                        ),
+                        const SizedBox(height: 12),
+                        _FilaAcceso(
                           icono: Icons.card_giftcard,
                           titulo: 'Mis referidos',
                           onTap: () => context.push('/referidos'),

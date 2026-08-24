@@ -377,6 +377,26 @@ class ApiService {
     }
   }
 
+  Future<List<dynamic>> obtenerHistorialMembresias() async {
+    final response = await _dio.get('/api/membresias/historial');
+    final data = response.data;
+    if (data is List) return data;
+    final map = data as Map<String, dynamic>;
+    return (map['historial'] as List<dynamic>?) ??
+        (map['membresias'] as List<dynamic>?) ??
+        (map['pagos'] as List<dynamic>?) ??
+        [];
+  }
+
+  /// Devuelve true si la solicitud quedó en revisión (202), false si la
+  /// factura se generó de inmediato.
+  Future<bool> solicitarFacturaTardia(int membresiaId) async {
+    final response = await _dio.post(
+      '/api/membresias/$membresiaId/solicitar-factura-tardia',
+    );
+    return response.statusCode == 202;
+  }
+
   Future<void> guardarDatosFiscales({
     required String rfc,
     required String razonSocial,
