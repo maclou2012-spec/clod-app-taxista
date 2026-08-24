@@ -269,13 +269,17 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> registrarDocumento({
+  Future<Map<String, dynamic>> subirDocumento({
+    required File foto,
     required String tipoDocumento,
-    required String urlArchivo,
   }) async {
+    final formData = FormData.fromMap({
+      'foto': await MultipartFile.fromFile(foto.path),
+      'tipo_documento': tipoDocumento,
+    });
     final response = await _dio.post(
       '/api/taxistas/documentos',
-      data: {'tipo_documento': tipoDocumento, 'url_archivo': urlArchivo},
+      data: formData,
     );
     return response.data as Map<String, dynamic>;
   }
@@ -353,10 +357,51 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<String> crearPaymentIntent(String tipo) async {
+  Future<List<dynamic>> obtenerRegimenesFiscales() async {
+    final response = await _dio.get('/api/catalogos/regimenes-fiscales');
+    final data = response.data as Map<String, dynamic>;
+    return data['regimenes'] as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>?> obtenerDatosFiscales() async {
+    try {
+      final response = await _dio.get('/api/taxistas/datos-fiscales');
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return (data['datos_fiscales'] as Map<String, dynamic>?) ?? data;
+      }
+      return null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  Future<void> guardarDatosFiscales({
+    required String rfc,
+    required String razonSocial,
+    required String regimenFiscal,
+    required String codigoPostalFiscal,
+    required String usoCfdi,
+    required String emailFiscal,
+  }) async {
+    await _dio.put(
+      '/api/taxistas/datos-fiscales',
+      data: {
+        'rfc': rfc,
+        'razon_social': razonSocial,
+        'regimen_fiscal': regimenFiscal,
+        'codigo_postal_fiscal': codigoPostalFiscal,
+        'uso_cfdi': usoCfdi,
+        'email_fiscal': emailFiscal,
+      },
+    );
+  }
+
+  Future<String> crearPaymentIntent(String tipo, bool solicitaFactura) async {
     final response = await _dio.post(
       '/api/stripe/crear-payment-intent',
-      data: {'tipo': tipo},
+      data: {'tipo': tipo, 'solicita_factura': solicitaFactura},
     );
     final data = response.data;
     if (data is Map<String, dynamic>) {

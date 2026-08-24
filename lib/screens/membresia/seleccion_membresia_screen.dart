@@ -49,7 +49,163 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
   bool _cargando = false;
   String? _errorMensaje;
 
-  Future<void> _pagar() async {
+  Future<void> _onPagarPressed() async {
+    if (_tipoSeleccionado == null) return;
+
+    final quiereFactura = await _preguntarFactura();
+    if (quiereFactura == null) return;
+
+    if (!quiereFactura) {
+      await _pagar(solicitaFactura: false);
+      return;
+    }
+
+    Map<String, dynamic>? datosFiscales;
+    try {
+      datosFiscales = await _apiService.obtenerDatosFiscales();
+    } catch (e) {
+      datosFiscales = null;
+    }
+    if (!mounted) return;
+
+    if (datosFiscales == null) {
+      final guardado = await context.push<bool>('/membresia/datos-fiscales');
+      if (guardado != true) return;
+    } else {
+      final razonSocial = datosFiscales['razon_social']?.toString() ?? '';
+      final continuar = await _confirmarFacturacion(razonSocial);
+      if (continuar == null) return;
+      if (!continuar) {
+        if (!mounted) return;
+        final guardado = await context.push<bool>(
+          '/membresia/datos-fiscales',
+        );
+        if (guardado != true) return;
+      }
+    }
+    if (!mounted) return;
+
+    await _pagar(solicitaFactura: true);
+  }
+
+  Future<bool?> _preguntarFactura() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          '¿Deseas factura por este pago?',
+          style: CLODTextStyles.headingSmall.copyWith(
+            color: CLODColors.carbon,
+          ),
+        ),
+        content: Text(
+          'Podrás usarla para tu contabilidad.',
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.carbon.withValues(alpha: 0.6),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'No',
+              style: CLODTextStyles.bodyMedium.copyWith(
+                color: CLODColors.carbon.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Sí',
+              style: CLODTextStyles.bodyMedium.copyWith(
+                color: CLODColors.azulCLOD,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _confirmarFacturacion(String razonSocial) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          'Facturación',
+          style: CLODTextStyles.headingSmall.copyWith(
+            color: CLODColors.carbon,
+          ),
+        ),
+        content: Text(
+          'Se facturará a $razonSocial',
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.carbon.withValues(alpha: 0.6),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Editar',
+              style: CLODTextStyles.bodyMedium.copyWith(
+                color: CLODColors.carbon.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Confirmar',
+              style: CLODTextStyles.bodyMedium.copyWith(
+                color: CLODColors.azulCLOD,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _mostrarAvisoFactura() {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          '¡Pago exitoso!',
+          style: CLODTextStyles.headingSmall.copyWith(
+            color: CLODColors.carbon,
+          ),
+        ),
+        content: Text(
+          'Tu factura se generará en breve, la verás en tu historial de pagos',
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.carbon.withValues(alpha: 0.6),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Entendido',
+              style: CLODTextStyles.bodyMedium.copyWith(
+                color: CLODColors.azulCLOD,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pagar({required bool solicitaFactura}) async {
     final tipo = _tipoSeleccionado;
     if (tipo == null) return;
 
@@ -59,7 +215,10 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
     });
 
     try {
-      final clientSecret = await _apiService.crearPaymentIntent(tipo);
+      final clientSecret = await _apiService.crearPaymentIntent(
+        tipo,
+        solicitaFactura,
+      );
 
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
@@ -77,6 +236,10 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
       final data = await _apiService.obtenerEstadoMembresia();
       if (!mounted) return;
       if (data['membresia_activa'] != null) {
+        if (solicitaFactura) {
+          await _mostrarAvisoFactura();
+          if (!mounted) return;
+        }
         context.go('/membresia-activa');
         return;
       }
@@ -155,7 +318,7 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
                     : 'Pagar',
                 cargando: _cargando,
                 habilitado: _tipoSeleccionado != null,
-                onPressed: _pagar,
+                onPressed: _onPagarPressed,
               ),
               const SizedBox(height: 32),
             ],

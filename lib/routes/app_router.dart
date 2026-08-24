@@ -13,6 +13,7 @@ import '../screens/onboarding/otp_verification_screen.dart';
 import '../screens/onboarding/phone_entry_screen.dart';
 import '../screens/onboarding/registro_basico_screen.dart';
 import '../screens/onboarding/splash_screen.dart';
+import '../screens/membresia/datos_fiscales_screen.dart';
 import '../screens/membresia/membresia_activa_screen.dart';
 import '../screens/membresia/seleccion_membresia_screen.dart';
 import '../screens/operacion/calificar_pasajero_screen.dart';
@@ -130,6 +131,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/membresia',
       builder: (context, state) => const SeleccionMembresiaScreen(),
+    ),
+    GoRoute(
+      path: '/membresia/datos-fiscales',
+      builder: (context, state) => const DatosFiscalesScreen(),
     ),
     GoRoute(
       path: '/membresia-activa',

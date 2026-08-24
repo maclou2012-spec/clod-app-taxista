@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../services/api_service.dart';
-import '../../services/storage_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
@@ -19,7 +18,6 @@ class SeguroScreen extends StatefulWidget {
 
 class _SeguroScreenState extends State<SeguroScreen> {
   final ApiService _apiService = ApiService();
-  final StorageService _storageService = StorageService();
   final ImagePicker _imagePicker = ImagePicker();
 
   File? _foto;
@@ -45,13 +43,9 @@ class _SeguroScreenState extends State<SeguroScreen> {
     });
 
     try {
-      final url = await _storageService.subirDocumento(
-        archivo,
-        'poliza_seguro',
-      );
-      await _apiService.registrarDocumento(
+      await _apiService.subirDocumento(
+        foto: archivo,
         tipoDocumento: 'poliza_seguro',
-        urlArchivo: url,
       );
       if (mounted) {
         setState(() => _listo = true);

@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../services/api_service.dart';
-import '../../services/storage_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
@@ -21,7 +20,6 @@ class IdentificacionOficialScreen extends StatefulWidget {
 class _IdentificacionOficialScreenState
     extends State<IdentificacionOficialScreen> {
   final ApiService _apiService = ApiService();
-  final StorageService _storageService = StorageService();
   final ImagePicker _imagePicker = ImagePicker();
 
   File? _fotoFrente;
@@ -59,10 +57,9 @@ class _IdentificacionOficialScreenState
     });
 
     try {
-      final url = await _storageService.subirDocumento(archivo, tipoDocumento);
-      await _apiService.registrarDocumento(
+      await _apiService.subirDocumento(
+        foto: archivo,
         tipoDocumento: tipoDocumento,
-        urlArchivo: url,
       );
       if (mounted) {
         setState(() {

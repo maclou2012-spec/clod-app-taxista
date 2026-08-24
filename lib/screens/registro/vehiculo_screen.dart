@@ -54,20 +54,40 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
     super.initState();
     final datos = widget.datosIniciales;
     if (datos != null) {
-      _marcaController.text = (datos['marca'] ?? '').toString();
-      _modeloController.text = (datos['modelo'] ?? '').toString();
-      _anioController.text = (datos['anio'] ?? '').toString();
-      _colorController.text = (datos['color'] ?? '').toString();
-      _placasController.text = (datos['placas'] ?? '').toString();
-      _numeroEconomicoController.text =
-          (datos['numero_economico'] ?? '').toString();
-      _fotoUrlExistente = datos['foto_url'] as String?;
-      _placas = _placasController.text;
+      _prefillDesde(datos);
+    } else {
+      // Sin datosIniciales (ej. llegando desde el flujo de registro en vez
+      // de "Mi vehículo" en Perfil) — si ya hay un vehículo guardado de un
+      // intento anterior, lo precargamos en vez de dejarlo en blanco.
+      _cargarVehiculoGuardado();
     }
     _placasController.addListener(() {
       setState(() => _placas = _placasController.text);
     });
     _cargarCaracteristicas();
+  }
+
+  void _prefillDesde(Map<String, dynamic> datos) {
+    _marcaController.text = (datos['marca'] ?? '').toString();
+    _modeloController.text = (datos['modelo'] ?? '').toString();
+    _anioController.text = (datos['anio'] ?? '').toString();
+    _colorController.text = (datos['color'] ?? '').toString();
+    _placasController.text = (datos['placas'] ?? '').toString();
+    _numeroEconomicoController.text =
+        (datos['numero_economico'] ?? '').toString();
+    _fotoUrlExistente = datos['foto_url'] as String?;
+    _placas = _placasController.text;
+  }
+
+  Future<void> _cargarVehiculoGuardado() async {
+    try {
+      final vehiculo = await _apiService.obtenerVehiculo();
+      if (vehiculo != null && mounted) {
+        setState(() => _prefillDesde(vehiculo));
+      }
+    } catch (e) {
+      // El taxista puede llenar el formulario manualmente si esto falla.
+    }
   }
 
   @override

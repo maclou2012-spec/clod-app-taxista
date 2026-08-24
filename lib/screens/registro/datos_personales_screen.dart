@@ -51,14 +51,44 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
 
   Future<void> _cargarPerfilActual() async {
     try {
-      final respuesta = await _apiService.obtenerUsuarioActual();
-      final usuario = respuesta['usuario'] as Map<String, dynamic>?;
+      final resultados = await Future.wait([
+        _apiService.obtenerUsuarioActual(),
+        _apiService.obtenerMiPerfilTaxista(),
+      ]);
+      final usuario = resultados[0]['usuario'] as Map<String, dynamic>?;
+      final taxista = resultados[1]['taxista'] as Map<String, dynamic>?;
+      if (!mounted) return;
+
       final nombre = usuario?['nombre'] as String?;
-      if (nombre != null && mounted) {
-        _nombreController.text = nombre;
+      if (nombre != null) _nombreController.text = nombre;
+
+      if (taxista != null) {
+        setState(() {
+          _curpController.text = (taxista['curp'] ?? '').toString();
+          _rfcController.text = (taxista['rfc'] ?? '').toString();
+          _calleController.text = (taxista['direccion_calle'] ?? '').toString();
+          _numeroController.text =
+              (taxista['direccion_numero'] ?? '').toString();
+          _coloniaController.text =
+              (taxista['direccion_colonia'] ?? '').toString();
+          _cpController.text = (taxista['direccion_cp'] ?? '').toString();
+          _ciudadController.text =
+              (taxista['direccion_ciudad'] ?? '').toString();
+          _contactoNombreController.text =
+              (taxista['contacto_emergencia_nombre'] ?? '').toString();
+          final telefonoContacto =
+              taxista['contacto_emergencia_telefono']?.toString();
+          if (telefonoContacto != null && telefonoContacto.isNotEmpty) {
+            _contactoTelefonoController.text = telefonoContacto;
+          }
+          final fechaNacimientoRaw = taxista['fecha_nacimiento']?.toString();
+          if (fechaNacimientoRaw != null) {
+            _fechaNacimiento = DateTime.tryParse(fechaNacimientoRaw);
+          }
+        });
       }
     } catch (e) {
-      // El taxista puede escribir su nombre manualmente si esto falla.
+      // El taxista puede llenar el formulario manualmente si esto falla.
     }
   }
 

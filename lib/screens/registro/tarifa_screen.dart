@@ -42,15 +42,36 @@ class _TarifaScreenState extends State<TarifaScreen> {
     super.initState();
     final datos = widget.datosIniciales;
     if (datos != null) {
-      _montoController.text = (datos['tarifa_base'] ?? '').toString();
-      _costoPorKmController.text = (datos['costo_por_km'] ?? '').toString();
-      _costoPorMinutoController.text =
-          (datos['costo_por_minuto'] ?? '').toString();
-      _montoTexto = _montoController.text;
+      _prefillDesde(datos);
+    } else {
+      // Sin datosIniciales (ej. llegando desde el flujo de registro en vez
+      // de "Mi tarifa" en Perfil) — si ya hay algo guardado de un intento
+      // anterior, lo precargamos para no obligar a escribirlo de nuevo.
+      _cargarDatosGuardados();
     }
     _montoController.addListener(() {
       setState(() => _montoTexto = _montoController.text);
     });
+  }
+
+  void _prefillDesde(Map<String, dynamic> datos) {
+    _montoController.text = (datos['tarifa_base'] ?? '').toString();
+    _costoPorKmController.text = (datos['costo_por_km'] ?? '').toString();
+    _costoPorMinutoController.text =
+        (datos['costo_por_minuto'] ?? '').toString();
+    _montoTexto = _montoController.text;
+  }
+
+  Future<void> _cargarDatosGuardados() async {
+    try {
+      final perfil = await _apiService.obtenerMiPerfilTaxista();
+      final taxista = perfil['taxista'] as Map<String, dynamic>?;
+      if (taxista != null && mounted) {
+        setState(() => _prefillDesde(taxista));
+      }
+    } catch (e) {
+      // El taxista puede llenar el formulario manualmente si esto falla.
+    }
   }
 
   @override

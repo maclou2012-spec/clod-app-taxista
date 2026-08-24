@@ -31,17 +31,32 @@ class _ServicioScreenState extends State<ServicioScreen> {
 
   Future<void> _cargarCatalogos() async {
     try {
-      final resultados = await Future.wait([
+      final resultados = await Future.wait<dynamic>([
         _apiService.obtenerClasesServicio(),
         _apiService.obtenerCaracteristicasPlus(),
+        _apiService.obtenerMiPerfilTaxista(),
       ]);
-      if (mounted) {
-        setState(() {
-          _clases = resultados[0].cast<Map<String, dynamic>>();
-          _caracteristicas = resultados[1].cast<Map<String, dynamic>>();
-          _cargando = false;
-        });
-      }
+      if (!mounted) return;
+
+      final taxista =
+          (resultados[2] as Map<String, dynamic>)['taxista']
+              as Map<String, dynamic>?;
+      final claseIdRaw = taxista?['clase_id'];
+      final activos =
+          (taxista?['caracteristicas'] as List<dynamic>?) ?? const [];
+
+      setState(() {
+        _clases = (resultados[0] as List<dynamic>).cast<Map<String, dynamic>>();
+        _caracteristicas =
+            (resultados[1] as List<dynamic>).cast<Map<String, dynamic>>();
+        _claseSeleccionadaId = claseIdRaw is int
+            ? claseIdRaw
+            : int.tryParse('$claseIdRaw');
+        _plusSeleccionados
+          ..clear()
+          ..addAll(activos.map((id) => id as int));
+        _cargando = false;
+      });
     } catch (e) {
       if (mounted) {
         setState(() {

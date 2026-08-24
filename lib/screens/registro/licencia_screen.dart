@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../services/api_service.dart';
-import '../../services/storage_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
@@ -43,7 +42,6 @@ class LicenciaScreen extends StatefulWidget {
 
 class _LicenciaScreenState extends State<LicenciaScreen> {
   final ApiService _apiService = ApiService();
-  final StorageService _storageService = StorageService();
   final ImagePicker _imagePicker = ImagePicker();
 
   final TextEditingController _licenciaController = TextEditingController();
@@ -69,6 +67,7 @@ class _LicenciaScreenState extends State<LicenciaScreen> {
       setState(() => _licenciaNumero = _licenciaController.text);
     });
     _cargarLocalidades();
+    _cargarDatosGuardados();
   }
 
   Future<void> _cargarLocalidades() async {
@@ -82,6 +81,33 @@ class _LicenciaScreenState extends State<LicenciaScreen> {
       }
     } catch (e) {
       if (mounted) setState(() => _cargandoLocalidades = false);
+    }
+  }
+
+  Future<void> _cargarDatosGuardados() async {
+    try {
+      final perfil = await _apiService.obtenerMiPerfilTaxista();
+      final taxista = perfil['taxista'] as Map<String, dynamic>?;
+      if (taxista == null || !mounted) return;
+
+      final licenciaNumero = taxista['licencia_numero']?.toString();
+      if (licenciaNumero != null && licenciaNumero.isNotEmpty) {
+        _licenciaController.text = licenciaNumero;
+      }
+      final vigenciaRaw = taxista['licencia_vigencia']?.toString();
+      final localidadIdRaw = taxista['localidad_id'];
+      final localidadId = localidadIdRaw is int
+          ? localidadIdRaw
+          : int.tryParse('$localidadIdRaw');
+
+      setState(() {
+        if (vigenciaRaw != null) {
+          _vigencia = DateTime.tryParse(vigenciaRaw);
+        }
+        if (localidadId != null) _localidadId = localidadId;
+      });
+    } catch (e) {
+      // El taxista puede llenar el formulario manualmente si esto falla.
     }
   }
 
@@ -141,13 +167,9 @@ class _LicenciaScreenState extends State<LicenciaScreen> {
     });
 
     try {
-      final url = await _storageService.subirDocumento(
-        archivo,
-        'licencia_foto',
-      );
-      await _apiService.registrarDocumento(
+      await _apiService.subirDocumento(
+        foto: archivo,
         tipoDocumento: 'licencia_foto',
-        urlArchivo: url,
       );
       if (mounted) {
         setState(() => _fotoLista = true);
