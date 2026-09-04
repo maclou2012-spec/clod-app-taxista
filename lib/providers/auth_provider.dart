@@ -13,10 +13,9 @@ class AuthProvider extends ChangeNotifier {
     AuthService? authService,
     ApiService? apiService,
     SecureStorageService? secureStorageService,
-  })  : _authService = authService ?? AuthService(),
-        _apiService = apiService ?? ApiService(),
-        _secureStorageService =
-            secureStorageService ?? SecureStorageService();
+  }) : _authService = authService ?? AuthService(),
+       _apiService = apiService ?? ApiService(),
+       _secureStorageService = secureStorageService ?? SecureStorageService();
 
   final AuthService _authService;
   final ApiService _apiService;

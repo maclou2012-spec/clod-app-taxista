@@ -100,7 +100,9 @@ class _ContactoEmergenciaScreenState extends State<ContactoEmergenciaScreen> {
       children: [
         Text(
           etiqueta,
-          style: CLODTextStyles.bodyMedium.copyWith(color: CLODColors.carbon),
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.texto(context),
+          ),
         ),
         const SizedBox(height: 8),
         campo,
@@ -111,7 +113,6 @@ class _ContactoEmergenciaScreenState extends State<ContactoEmergenciaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: _cargandoPerfil
             ? Center(
@@ -131,7 +132,7 @@ class _ContactoEmergenciaScreenState extends State<ContactoEmergenciaScreen> {
                       'Contacto de emergencia',
                       textAlign: TextAlign.center,
                       style: CLODTextStyles.headingMedium.copyWith(
-                        color: CLODColors.carbon,
+                        color: CLODColors.texto(context),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -140,7 +141,7 @@ class _ContactoEmergenciaScreenState extends State<ContactoEmergenciaScreen> {
                       'un viaje',
                       textAlign: TextAlign.center,
                       style: CLODTextStyles.bodyMedium.copyWith(
-                        color: CLODColors.carbon.withValues(alpha: 0.6),
+                        color: CLODColors.texto(context).withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 32),

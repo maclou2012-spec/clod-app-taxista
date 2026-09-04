@@ -53,7 +53,6 @@ class _RegistroBasicoScreenState extends State<RegistroBasicoScreen> {
     final nombreValido = _nombre.trim().isNotEmpty;
 
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -65,7 +64,7 @@ class _RegistroBasicoScreenState extends State<RegistroBasicoScreen> {
                 'Completa tu registro',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -73,14 +72,14 @@ class _RegistroBasicoScreenState extends State<RegistroBasicoScreen> {
                 'Solo necesitamos tu nombre para crear tu cuenta de taxista',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
               Text(
                 'Nombre completo',
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -93,7 +92,7 @@ class _RegistroBasicoScreenState extends State<RegistroBasicoScreen> {
               Text(
                 'Código de referido (opcional)',
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),

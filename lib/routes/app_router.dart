@@ -86,9 +86,8 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/vehiculo',
-      builder: (context, state) => VehiculoScreen(
-        datosIniciales: state.extra as Map<String, dynamic>?,
-      ),
+      builder: (context, state) =>
+          VehiculoScreen(datosIniciales: state.extra as Map<String, dynamic>?),
     ),
     GoRoute(
       path: '/servicio',
@@ -96,19 +95,15 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/tarifa',
-      builder: (context, state) => TarifaScreen(
-        datosIniciales: state.extra as Map<String, dynamic>?,
-      ),
+      builder: (context, state) =>
+          TarifaScreen(datosIniciales: state.extra as Map<String, dynamic>?),
     ),
     GoRoute(path: '/seguro', builder: (context, state) => const SeguroScreen()),
     GoRoute(
       path: '/revision',
       builder: (context, state) => const EnRevisionScreen(),
     ),
-    GoRoute(
-      path: '/perfil',
-      builder: (context, state) => const PerfilScreen(),
-    ),
+    GoRoute(path: '/perfil', builder: (context, state) => const PerfilScreen()),
     GoRoute(
       path: '/historial',
       builder: (context, state) => const HistorialScreen(),
@@ -125,10 +120,7 @@ final GoRouter appRouter = GoRouter(
       path: '/configuracion/contacto-emergencia',
       builder: (context, state) => const ContactoEmergenciaScreen(),
     ),
-    GoRoute(
-      path: '/ayuda',
-      builder: (context, state) => const AyudaScreen(),
-    ),
+    GoRoute(path: '/ayuda', builder: (context, state) => const AyudaScreen()),
     GoRoute(
       path: '/membresia',
       builder: (context, state) => const SeleccionMembresiaScreen(),

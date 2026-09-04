@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:taxiclod/main.dart';
+import 'package:taxiclod/providers/theme_provider.dart';
 
 void main() {
-  testWidgets('Splash screen shows TaxiCLOD branding', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Splash screen shows TaxiCLOD branding', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(MyApp(themeProvider: ThemeProvider()));
 
     expect(find.text('Taxi CLOD'), findsOneWidget);
     expect(

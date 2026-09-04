@@ -10,9 +10,7 @@ class AyudaScreen extends StatelessWidget {
 
   Future<void> _abrirWhatsapp(BuildContext context) async {
     final uri = Uri.parse(
-      'https://wa.me/$_numeroSoporte?text=${Uri.encodeComponent(
-        'Hola, necesito ayuda con mi cuenta de TaxiCLOD',
-      )}',
+      'https://wa.me/$_numeroSoporte?text=${Uri.encodeComponent('Hola, necesito ayuda con mi cuenta de TaxiCLOD')}',
     );
     final exito = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!exito && context.mounted) {
@@ -36,17 +34,17 @@ class AyudaScreen extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: CLODColors.fondoTarjeta(context),
         title: Text(
           'Preguntas frecuentes',
           style: CLODTextStyles.headingSmall.copyWith(
-            color: CLODColors.carbon,
+            color: CLODColors.texto(context),
           ),
         ),
         content: Text(
           'Próximamente',
           style: CLODTextStyles.bodyMedium.copyWith(
-            color: CLODColors.carbon.withValues(alpha: 0.6),
+            color: CLODColors.texto(context).withValues(alpha: 0.6),
           ),
         ),
         actions: [
@@ -67,7 +65,6 @@ class AyudaScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -78,7 +75,7 @@ class AyudaScreen extends StatelessWidget {
               Text(
                 'Ayuda y soporte',
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 24),
@@ -126,9 +123,9 @@ class _FilaAyuda extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CLODColors.fondoTarjeta(context),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFD3D1C7)),
+          border: Border.all(color: CLODColors.borde(context)),
         ),
         child: Row(
           children: [
@@ -138,13 +135,13 @@ class _FilaAyuda extends StatelessWidget {
               child: Text(
                 titulo,
                 style: CLODTextStyles.bodyLarge.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
             ),
             Icon(
               Icons.chevron_right,
-              color: CLODColors.carbon.withValues(alpha: 0.4),
+              color: CLODColors.texto(context).withValues(alpha: 0.4),
             ),
           ],
         ),

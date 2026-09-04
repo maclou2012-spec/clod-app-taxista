@@ -16,8 +16,6 @@ class CLODTextField extends StatelessWidget {
     this.maxLines = 1,
   });
 
-  static const Color _borderColor = Color(0xFFD3D1C7);
-
   final TextEditingController controller;
   final String? hintText;
   final TextInputType? keyboardType;
@@ -37,7 +35,9 @@ class CLODTextField extends StatelessWidget {
       textAlign: textAlign,
       maxLength: maxLength,
       maxLines: maxLines,
-      style: CLODTextStyles.bodyLarge.copyWith(color: CLODColors.carbon),
+      style: CLODTextStyles.bodyLarge.copyWith(
+        color: CLODColors.texto(context),
+      ),
       decoration: InputDecoration(
         counterText: maxLength != null ? '' : null,
         hintText: hintText,
@@ -45,11 +45,11 @@ class CLODTextField extends StatelessWidget {
         fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _borderColor),
+          borderSide: BorderSide(color: CLODColors.borde(context)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _borderColor),
+          borderSide: BorderSide(color: CLODColors.borde(context)),
         ),
       ),
     );

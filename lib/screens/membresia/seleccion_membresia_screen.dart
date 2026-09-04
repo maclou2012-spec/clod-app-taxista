@@ -77,9 +77,7 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
       if (continuar == null) return;
       if (!continuar) {
         if (!mounted) return;
-        final guardado = await context.push<bool>(
-          '/membresia/datos-fiscales',
-        );
+        final guardado = await context.push<bool>('/membresia/datos-fiscales');
         if (guardado != true) return;
       }
     }
@@ -92,17 +90,17 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: CLODColors.fondoTarjeta(context),
         title: Text(
           '¿Deseas factura por este pago?',
           style: CLODTextStyles.headingSmall.copyWith(
-            color: CLODColors.carbon,
+            color: CLODColors.texto(context),
           ),
         ),
         content: Text(
           'Podrás usarla para tu contabilidad.',
           style: CLODTextStyles.bodyMedium.copyWith(
-            color: CLODColors.carbon.withValues(alpha: 0.6),
+            color: CLODColors.texto(context).withValues(alpha: 0.6),
           ),
         ),
         actions: [
@@ -111,7 +109,7 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
             child: Text(
               'No',
               style: CLODTextStyles.bodyMedium.copyWith(
-                color: CLODColors.carbon.withValues(alpha: 0.6),
+                color: CLODColors.texto(context).withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -134,17 +132,17 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: CLODColors.fondoTarjeta(context),
         title: Text(
           'Facturación',
           style: CLODTextStyles.headingSmall.copyWith(
-            color: CLODColors.carbon,
+            color: CLODColors.texto(context),
           ),
         ),
         content: Text(
           'Se facturará a $razonSocial',
           style: CLODTextStyles.bodyMedium.copyWith(
-            color: CLODColors.carbon.withValues(alpha: 0.6),
+            color: CLODColors.texto(context).withValues(alpha: 0.6),
           ),
         ),
         actions: [
@@ -153,7 +151,7 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
             child: Text(
               'Editar',
               style: CLODTextStyles.bodyMedium.copyWith(
-                color: CLODColors.carbon.withValues(alpha: 0.6),
+                color: CLODColors.texto(context).withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -176,17 +174,17 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: CLODColors.fondoTarjeta(context),
         title: Text(
           '¡Pago exitoso!',
           style: CLODTextStyles.headingSmall.copyWith(
-            color: CLODColors.carbon,
+            color: CLODColors.texto(context),
           ),
         ),
         content: Text(
           'Tu factura se generará en breve, la verás en tu historial de pagos',
           style: CLODTextStyles.bodyMedium.copyWith(
-            color: CLODColors.carbon.withValues(alpha: 0.6),
+            color: CLODColors.texto(context).withValues(alpha: 0.6),
           ),
         ),
         actions: [
@@ -275,7 +273,6 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
         .firstOrNull;
 
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -287,7 +284,7 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
                 'Tu membresía',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -295,7 +292,7 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
                 'Cuota fija, nunca comisión por viaje.',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
@@ -348,12 +345,12 @@ class _TarjetaPlan extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CLODColors.fondoTarjeta(context),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: seleccionado
                 ? CLODColors.azulCLOD
-                : const Color(0xFFD3D1C7),
+                : CLODColors.borde(context),
             width: seleccionado ? 2 : 1,
           ),
         ),
@@ -368,7 +365,7 @@ class _TarjetaPlan extends StatelessWidget {
                       Text(
                         plan.nombre,
                         style: CLODTextStyles.headingSmall.copyWith(
-                          color: CLODColors.carbon,
+                          color: CLODColors.texto(context),
                         ),
                       ),
                       if (plan.promo) ...[
@@ -397,7 +394,7 @@ class _TarjetaPlan extends StatelessWidget {
                   Text(
                     plan.monto,
                     style: CLODTextStyles.bodyLarge.copyWith(
-                      color: CLODColors.carbon.withValues(alpha: 0.6),
+                      color: CLODColors.texto(context).withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -409,7 +406,7 @@ class _TarjetaPlan extends StatelessWidget {
                   : Icons.radio_button_unchecked,
               color: seleccionado
                   ? CLODColors.azulCLOD
-                  : CLODColors.carbon.withValues(alpha: 0.3),
+                  : CLODColors.texto(context).withValues(alpha: 0.3),
             ),
           ],
         ),

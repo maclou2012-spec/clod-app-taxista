@@ -67,17 +67,17 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
           _curpController.text = (taxista['curp'] ?? '').toString();
           _rfcController.text = (taxista['rfc'] ?? '').toString();
           _calleController.text = (taxista['direccion_calle'] ?? '').toString();
-          _numeroController.text =
-              (taxista['direccion_numero'] ?? '').toString();
-          _coloniaController.text =
-              (taxista['direccion_colonia'] ?? '').toString();
+          _numeroController.text = (taxista['direccion_numero'] ?? '')
+              .toString();
+          _coloniaController.text = (taxista['direccion_colonia'] ?? '')
+              .toString();
           _cpController.text = (taxista['direccion_cp'] ?? '').toString();
-          _ciudadController.text =
-              (taxista['direccion_ciudad'] ?? '').toString();
+          _ciudadController.text = (taxista['direccion_ciudad'] ?? '')
+              .toString();
           _contactoNombreController.text =
               (taxista['contacto_emergencia_nombre'] ?? '').toString();
-          final telefonoContacto =
-              taxista['contacto_emergencia_telefono']?.toString();
+          final telefonoContacto = taxista['contacto_emergencia_telefono']
+              ?.toString();
           if (telefonoContacto != null && telefonoContacto.isNotEmpty) {
             _contactoTelefonoController.text = telefonoContacto;
           }
@@ -155,8 +155,9 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
     try {
       await _apiService.actualizarDatosPersonales(
         nombre: _nombre.trim(),
-        fechaNacimiento:
-            _fechaNacimiento == null ? null : _formatearFecha(_fechaNacimiento!),
+        fechaNacimiento: _fechaNacimiento == null
+            ? null
+            : _formatearFecha(_fechaNacimiento!),
         curp: _vacioAnulo(_curpController),
         rfc: _vacioAnulo(_rfcController),
         direccionCalle: _vacioAnulo(_calleController),
@@ -173,7 +174,8 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMensaje = 'No se pudo guardar tu información. Intenta de nuevo.';
+          _errorMensaje =
+              'No se pudo guardar tu información. Intenta de nuevo.';
         });
       }
     } finally {
@@ -189,7 +191,9 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
       children: [
         Text(
           etiqueta,
-          style: CLODTextStyles.bodyMedium.copyWith(color: CLODColors.carbon),
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.texto(context),
+          ),
         ),
         const SizedBox(height: 8),
         campo,
@@ -200,14 +204,15 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
   Widget _tituloSeccion(String texto) {
     return Text(
       texto,
-      style: CLODTextStyles.headingSmall.copyWith(color: CLODColors.carbon),
+      style: CLODTextStyles.headingSmall.copyWith(
+        color: CLODColors.texto(context),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -219,7 +224,7 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
                 'Datos personales',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -227,7 +232,7 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
                 'Verifica y completa tu información',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
@@ -242,10 +247,7 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
               const SizedBox(height: 20),
               _campoConEtiqueta(
                 'Fecha de nacimiento',
-                _CampoFecha(
-                  fecha: _fechaNacimiento,
-                  onTap: _seleccionarFecha,
-                ),
+                _CampoFecha(fecha: _fechaNacimiento, onTap: _seleccionarFecha),
               ),
               const SizedBox(height: 20),
               _campoConEtiqueta(
@@ -356,9 +358,7 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
                   controller: _contactoTelefonoController,
                   keyboardType: TextInputType.phone,
                   maxLength: 10,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   hintText: '10 dígitos',
                 ),
               ),
@@ -385,8 +385,6 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
 class _CampoFecha extends StatelessWidget {
   const _CampoFecha({required this.fecha, required this.onTap});
 
-  static const Color _colorBorde = Color(0xFFD3D1C7);
-
   final DateTime? fecha;
   final VoidCallback onTap;
 
@@ -395,8 +393,8 @@ class _CampoFecha extends StatelessWidget {
     final texto = fecha == null
         ? 'Selecciona una fecha'
         : '${fecha!.day.toString().padLeft(2, '0')}/'
-            '${fecha!.month.toString().padLeft(2, '0')}/'
-            '${fecha!.year}';
+              '${fecha!.month.toString().padLeft(2, '0')}/'
+              '${fecha!.year}';
 
     return InkWell(
       onTap: onTap,
@@ -404,23 +402,23 @@ class _CampoFecha extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CLODColors.fondoTarjeta(context),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: _colorBorde),
+          border: Border.all(color: CLODColors.borde(context)),
         ),
         child: Row(
           children: [
             Icon(
               Icons.calendar_today,
               size: 18,
-              color: CLODColors.carbon.withValues(alpha: 0.5),
+              color: CLODColors.texto(context).withValues(alpha: 0.5),
             ),
             const SizedBox(width: 10),
             Text(
               texto,
               style: CLODTextStyles.bodyLarge.copyWith(
                 color: fecha == null
-                    ? CLODColors.carbon.withValues(alpha: 0.4)
+                    ? CLODColors.texto(context).withValues(alpha: 0.4)
                     : CLODColors.carbon,
               ),
             ),

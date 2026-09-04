@@ -38,7 +38,12 @@ bool _campoBooleano(Map<String, dynamic> mapa, List<String> llaves) {
   return valor == true || valor == 1 || valor == '1';
 }
 
-const List<String> _estadosValidos = ['pendiente', 'cumplido', 'por_pagar', 'pagado'];
+const List<String> _estadosValidos = [
+  'pendiente',
+  'cumplido',
+  'por_pagar',
+  'pagado',
+];
 
 // El backend no siempre expone un solo campo "estado" — se intenta leerlo
 // directo primero, y si no viene o no es uno de los 4 valores esperados, se
@@ -127,17 +132,18 @@ class _ReferidosScreenState extends State<ReferidosScreen> with RouteAware {
 
       if (mounted) {
         setState(() {
-          _codigo = _campoTexto(codigoData, ['codigo', 'codigo_referido']) ?? '';
+          _codigo =
+              _campoTexto(codigoData, ['codigo', 'codigo_referido']) ?? '';
           _cumplidos = _campoEntero(progresoData, [
             'referidos_cumplidos',
             'cumplidos',
             'completados',
           ]);
-          _requeridos = _campoEntero(
-            progresoData,
-            ['referidos_requeridos', 'requeridos', 'meta'],
-            porDefecto: 5,
-          );
+          _requeridos = _campoEntero(progresoData, [
+            'referidos_requeridos',
+            'requeridos',
+            'meta',
+          ], porDefecto: 5);
           _montoBono = _campoEntero(progresoData, [
             'monto_por_completar',
             'monto_bono',
@@ -189,9 +195,8 @@ class _ReferidosScreenState extends State<ReferidosScreen> with RouteAware {
     final exito = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _DialogoSolicitarPago(
-        onConfirmar: _apiService.solicitarPagoReferido,
-      ),
+      builder: (context) =>
+          _DialogoSolicitarPago(onConfirmar: _apiService.solicitarPagoReferido),
     );
 
     if (exito == true && mounted) {
@@ -204,17 +209,17 @@ class _ReferidosScreenState extends State<ReferidosScreen> with RouteAware {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: CLODColors.fondoTarjeta(context),
         title: Text(
           '¡Listo!',
           style: CLODTextStyles.headingSmall.copyWith(
-            color: CLODColors.carbon,
+            color: CLODColors.texto(context),
           ),
         ),
         content: Text(
           'Tu pago fue solicitado, lo procesaremos pronto',
           style: CLODTextStyles.bodyMedium.copyWith(
-            color: CLODColors.carbon.withValues(alpha: 0.6),
+            color: CLODColors.texto(context).withValues(alpha: 0.6),
           ),
         ),
         actions: [
@@ -246,7 +251,6 @@ class _ReferidosScreenState extends State<ReferidosScreen> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: _cargando
             ? Center(
@@ -257,139 +261,130 @@ class _ReferidosScreenState extends State<ReferidosScreen> with RouteAware {
                 ),
               )
             : _errorMensaje != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: CLODErrorText(_errorMensaje!),
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: CLODErrorText(_errorMensaje!),
+                ),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 16),
+                    Text(
+                      'Mis referidos',
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.headingMedium.copyWith(
+                        color: CLODColors.texto(context),
+                      ),
                     ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 16),
-                        Text(
-                          'Mis referidos',
-                          textAlign: TextAlign.center,
-                          style: CLODTextStyles.headingMedium.copyWith(
-                            color: CLODColors.carbon,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Gana \$$_montoBono MXN por cada $_requeridos',
-                          textAlign: TextAlign.center,
-                          style: CLODTextStyles.bodyMedium.copyWith(
-                            color: CLODColors.carbon.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 24,
-                          ),
-                          decoration: BoxDecoration(
-                            color: CLODColors.azulMarino,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                'Tu código',
-                                style: CLODTextStyles.bodySmall.copyWith(
-                                  color: CLODColors.grisClaro.withValues(
-                                    alpha: 0.7,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _codigo,
-                                style: CLODTextStyles.headingLarge,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        _BarraProgreso(
-                          cumplidos: _cumplidos,
-                          requeridos: _requeridos,
-                        ),
-                        if (_listoParaPago) ...[
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: _mostrarDialogoSolicitarPago,
-                            icon: const Icon(Icons.payments_outlined),
-                            label: const Text('Solicitar pago'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: CLODColors.azulMarino,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Gana \$$_montoBono MXN por cada $_requeridos',
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.bodyMedium.copyWith(
+                        color: CLODColors.texto(context).withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 24,
+                      ),
+                      decoration: BoxDecoration(
+                        color: CLODColors.azulMarino,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Tu código',
+                            style: CLODTextStyles.bodySmall.copyWith(
+                              color: CLODColors.texto(
+                                context,
+                              ).withValues(alpha: 0.7),
                             ),
                           ),
-                        ],
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: _compartirCodigo,
-                          icon: const Icon(Icons.share),
-                          label: const Text('Compartir código'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: CLODColors.azulCLOD,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                        ),
-                        if (_totalReferidos > 0) ...[
-                          const SizedBox(height: 32),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Tus referidos',
-                              style: CLODTextStyles.headingSmall.copyWith(
-                                color: CLODColors.carbon,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          if (_cargandoLista)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 24,
-                              ),
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    CLODColors.azulCLOD,
-                                  ),
-                                ),
-                              ),
-                            )
-                          else
-                            for (final referido in _referidos) ...[
-                              _FilaReferido(referido: referido),
-                              const SizedBox(height: 8),
-                            ],
                           const SizedBox(height: 8),
-                          _ControlesPaginacion(
-                            pagina: _pagina,
-                            totalPaginas: (_totalReferidos / _porPagina)
-                                .ceil()
-                                .clamp(1, 1 << 30),
-                            cargando: _cargandoLista,
-                            onAnterior: () =>
-                                _cargarPaginaReferidos(_pagina - 1),
-                            onSiguiente: () =>
-                                _cargarPaginaReferidos(_pagina + 1),
-                          ),
+                          Text(_codigo, style: CLODTextStyles.headingLarge),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                    _BarraProgreso(
+                      cumplidos: _cumplidos,
+                      requeridos: _requeridos,
+                    ),
+                    if (_listoParaPago) ...[
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _mostrarDialogoSolicitarPago,
+                        icon: const Icon(Icons.payments_outlined),
+                        label: const Text('Solicitar pago'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: CLODColors.azulMarino,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: _compartirCodigo,
+                      icon: const Icon(Icons.share),
+                      label: const Text('Compartir código'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: CLODColors.azulCLOD,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                    if (_totalReferidos > 0) ...[
+                      const SizedBox(height: 32),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Tus referidos',
+                          style: CLODTextStyles.headingSmall.copyWith(
+                            color: CLODColors.texto(context),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_cargandoLista)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                CLODColors.azulCLOD,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        for (final referido in _referidos) ...[
+                          _FilaReferido(referido: referido),
+                          const SizedBox(height: 8),
+                        ],
+                      const SizedBox(height: 8),
+                      _ControlesPaginacion(
+                        pagina: _pagina,
+                        totalPaginas: (_totalReferidos / _porPagina)
+                            .ceil()
+                            .clamp(1, 1 << 30),
+                        cargando: _cargandoLista,
+                        onAnterior: () => _cargarPaginaReferidos(_pagina - 1),
+                        onSiguiente: () => _cargarPaginaReferidos(_pagina + 1),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -463,11 +458,11 @@ class _DialogoSolicitarPagoState extends State<_DialogoSolicitarPago> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: Colors.white,
+      backgroundColor: CLODColors.fondoTarjeta(context),
       title: Text(
         'Solicitar pago',
         style: CLODTextStyles.headingSmall.copyWith(
-          color: CLODColors.carbon,
+          color: CLODColors.texto(context),
         ),
       ),
       content: Column(
@@ -477,7 +472,7 @@ class _DialogoSolicitarPagoState extends State<_DialogoSolicitarPago> {
           Text(
             'Ingresa la CLABE donde quieres recibir tu pago',
             style: CLODTextStyles.bodyMedium.copyWith(
-              color: CLODColors.carbon.withValues(alpha: 0.6),
+              color: CLODColors.texto(context).withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 16),
@@ -496,13 +491,11 @@ class _DialogoSolicitarPagoState extends State<_DialogoSolicitarPago> {
       ),
       actions: [
         TextButton(
-          onPressed: _cargando
-              ? null
-              : () => Navigator.of(context).pop(false),
+          onPressed: _cargando ? null : () => Navigator.of(context).pop(false),
           child: Text(
             'Cancelar',
             style: CLODTextStyles.bodyMedium.copyWith(
-              color: CLODColors.carbon.withValues(alpha: 0.6),
+              color: CLODColors.texto(context).withValues(alpha: 0.6),
             ),
           ),
         ),
@@ -560,7 +553,7 @@ class _BarraProgreso extends StatelessWidget {
           '$cumplidos de $requeridos',
           textAlign: TextAlign.center,
           style: CLODTextStyles.bodyMedium.copyWith(
-            color: CLODColors.carbon.withValues(alpha: 0.7),
+            color: CLODColors.texto(context).withValues(alpha: 0.7),
           ),
         ),
       ],
@@ -582,9 +575,9 @@ class _FilaReferido extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CLODColors.fondoTarjeta(context),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFD3D1C7)),
+        border: Border.all(color: CLODColors.borde(context)),
       ),
       child: Row(
         children: [
@@ -592,7 +585,7 @@ class _FilaReferido extends StatelessWidget {
             child: Text(
               nombre,
               style: CLODTextStyles.bodyLarge.copyWith(
-                color: CLODColors.carbon,
+                color: CLODColors.texto(context),
               ),
             ),
           ),
@@ -621,17 +614,20 @@ class _BadgeEstado extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (Color colorFondo, Color colorTexto, String etiqueta) =
-        switch (estado) {
-          'pagado' => (_verde.withValues(alpha: 0.15), _verde, 'Pagado'),
-          'por_pagar' => (_ambar.withValues(alpha: 0.15), _ambar, 'Por pagar'),
-          'cumplido' => (
-            CLODColors.azulCLOD.withValues(alpha: 0.15),
-            CLODColors.azulCLOD,
-            'Cumplido',
-          ),
-          _ => (_gris.withValues(alpha: 0.15), _gris, 'Pendiente'),
-        };
+    final (
+      Color colorFondo,
+      Color colorTexto,
+      String etiqueta,
+    ) = switch (estado) {
+      'pagado' => (_verde.withValues(alpha: 0.15), _verde, 'Pagado'),
+      'por_pagar' => (_ambar.withValues(alpha: 0.15), _ambar, 'Por pagar'),
+      'cumplido' => (
+        CLODColors.azulCLOD.withValues(alpha: 0.15),
+        CLODColors.azulCLOD,
+        'Cumplido',
+      ),
+      _ => (_gris.withValues(alpha: 0.15), _gris, 'Pendiente'),
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -682,13 +678,11 @@ class _ControlesPaginacion extends StatelessWidget {
         Text(
           'Página $pagina de $totalPaginas',
           style: CLODTextStyles.bodySmall.copyWith(
-            color: CLODColors.carbon.withValues(alpha: 0.6),
+            color: CLODColors.texto(context).withValues(alpha: 0.6),
           ),
         ),
         TextButton(
-          onPressed: (!cargando && pagina < totalPaginas)
-              ? onSiguiente
-              : null,
+          onPressed: (!cargando && pagina < totalPaginas) ? onSiguiente : null,
           child: Text(
             'Siguiente',
             style: CLODTextStyles.bodyMedium.copyWith(

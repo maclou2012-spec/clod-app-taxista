@@ -31,8 +31,6 @@ int? _campoEntero(Map<String, dynamic> mapa, List<String> llaves) {
   return null;
 }
 
-const Color _colorBordeCampo = Color(0xFFD3D1C7);
-
 class LicenciaScreen extends StatefulWidget {
   const LicenciaScreen({super.key});
 
@@ -196,8 +194,9 @@ class _LicenciaScreenState extends State<LicenciaScreen> {
     try {
       await _apiService.actualizarLicencia(
         licenciaNumero: _licenciaNumero.trim(),
-        licenciaVigencia:
-            _vigencia == null ? null : _formatearFecha(_vigencia!),
+        licenciaVigencia: _vigencia == null
+            ? null
+            : _formatearFecha(_vigencia!),
         localidadId: _localidadId,
       );
       if (mounted) {
@@ -222,7 +221,9 @@ class _LicenciaScreenState extends State<LicenciaScreen> {
       children: [
         Text(
           etiqueta,
-          style: CLODTextStyles.bodyMedium.copyWith(color: CLODColors.carbon),
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.texto(context),
+          ),
         ),
         const SizedBox(height: 8),
         campo,
@@ -233,7 +234,6 @@ class _LicenciaScreenState extends State<LicenciaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -245,7 +245,7 @@ class _LicenciaScreenState extends State<LicenciaScreen> {
                 'Datos de licencia',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -253,7 +253,7 @@ class _LicenciaScreenState extends State<LicenciaScreen> {
                 'Tu permiso vigente de SEMOVI',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
@@ -267,10 +267,7 @@ class _LicenciaScreenState extends State<LicenciaScreen> {
               const SizedBox(height: 20),
               _campoConEtiqueta(
                 'Vigencia',
-                _CampoFecha(
-                  fecha: _vigencia,
-                  onTap: _seleccionarVigencia,
-                ),
+                _CampoFecha(fecha: _vigencia, onTap: _seleccionarVigencia),
               ),
               const SizedBox(height: 20),
               _campoConEtiqueta(
@@ -320,8 +317,6 @@ class _LicenciaScreenState extends State<LicenciaScreen> {
 class _CampoFecha extends StatelessWidget {
   const _CampoFecha({required this.fecha, required this.onTap});
 
-  static const Color _colorBorde = Color(0xFFD3D1C7);
-
   final DateTime? fecha;
   final VoidCallback onTap;
 
@@ -330,8 +325,8 @@ class _CampoFecha extends StatelessWidget {
     final texto = fecha == null
         ? 'Selecciona una fecha'
         : '${fecha!.day.toString().padLeft(2, '0')}/'
-            '${fecha!.month.toString().padLeft(2, '0')}/'
-            '${fecha!.year}';
+              '${fecha!.month.toString().padLeft(2, '0')}/'
+              '${fecha!.year}';
 
     return InkWell(
       onTap: onTap,
@@ -339,23 +334,23 @@ class _CampoFecha extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CLODColors.fondoTarjeta(context),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: _colorBorde),
+          border: Border.all(color: CLODColors.borde(context)),
         ),
         child: Row(
           children: [
             Icon(
               Icons.calendar_today,
               size: 18,
-              color: CLODColors.carbon.withValues(alpha: 0.5),
+              color: CLODColors.texto(context).withValues(alpha: 0.5),
             ),
             const SizedBox(width: 10),
             Text(
               texto,
               style: CLODTextStyles.bodyLarge.copyWith(
                 color: fecha == null
-                    ? CLODColors.carbon.withValues(alpha: 0.4)
+                    ? CLODColors.texto(context).withValues(alpha: 0.4)
                     : CLODColors.carbon,
               ),
             ),
@@ -407,7 +402,9 @@ class _AreaCaptura extends StatelessWidget {
                       Text(
                         etiqueta,
                         style: CLODTextStyles.bodyMedium.copyWith(
-                          color: CLODColors.carbon.withValues(alpha: 0.6),
+                          color: CLODColors.texto(
+                            context,
+                          ).withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -531,21 +528,23 @@ class _SelectorLocalidad extends StatelessWidget {
       isExpanded: true,
       items: items,
       onChanged: cargando ? null : onChanged,
-      style: CLODTextStyles.bodyLarge.copyWith(color: CLODColors.carbon),
+      style: CLODTextStyles.bodyLarge.copyWith(
+        color: CLODColors.texto(context),
+      ),
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.white,
         hintText: cargando ? 'Cargando...' : 'Selecciona tu localidad',
         hintStyle: CLODTextStyles.bodyLarge.copyWith(
-          color: CLODColors.carbon.withValues(alpha: 0.4),
+          color: CLODColors.texto(context).withValues(alpha: 0.4),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _colorBordeCampo),
+          borderSide: BorderSide(color: CLODColors.borde(context)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _colorBordeCampo),
+          borderSide: BorderSide(color: CLODColors.borde(context)),
         ),
       ),
     );

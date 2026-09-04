@@ -16,7 +16,7 @@ class ResumenViajeScreen extends StatelessWidget {
     return '${duracion.inMinutes} min';
   }
 
-  Widget _filaResumen(String etiqueta, String valor) {
+  Widget _filaResumen(BuildContext context, String etiqueta, String valor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -25,13 +25,13 @@ class ResumenViajeScreen extends StatelessWidget {
           Text(
             etiqueta,
             style: CLODTextStyles.bodyMedium.copyWith(
-              color: CLODColors.carbon.withValues(alpha: 0.6),
+              color: CLODColors.texto(context).withValues(alpha: 0.6),
             ),
           ),
           Text(
             valor,
             style: CLODTextStyles.bodyLarge.copyWith(
-              color: CLODColors.carbon,
+              color: CLODColors.texto(context),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -43,7 +43,6 @@ class ResumenViajeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -71,7 +70,7 @@ class ResumenViajeScreen extends StatelessWidget {
                 'Viaje completado',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 32),
@@ -81,17 +80,17 @@ class ResumenViajeScreen extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: CLODColors.fondoTarjeta(context),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFD3D1C7)),
+                  border: Border.all(color: CLODColors.borde(context)),
                 ),
                 child: Column(
                   children: [
-                    _filaResumen('Pasajero', args.pasajeroNombre),
+                    _filaResumen(context, 'Pasajero', args.pasajeroNombre),
                     const Divider(height: 1),
-                    _filaResumen('Duración', _formatearDuracion()),
+                    _filaResumen(context, 'Duración', _formatearDuracion()),
                     const Divider(height: 1),
-                    _filaResumen('Acordado', '\$${args.tarifa} MXN'),
+                    _filaResumen(context, 'Acordado', '\$${args.tarifa} MXN'),
                   ],
                 ),
               ),
@@ -100,7 +99,7 @@ class ResumenViajeScreen extends StatelessWidget {
                 'Cobro directo con el pasajero',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodySmall.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.5),
+                  color: CLODColors.texto(context).withValues(alpha: 0.5),
                 ),
               ),
               const SizedBox(height: 32),

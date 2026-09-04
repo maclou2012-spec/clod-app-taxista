@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/theme_provider.dart';
 import '../../services/secure_storage_service.dart';
 import '../../services/socket_service.dart';
 import '../../theme/clod_theme.dart';
@@ -19,7 +21,6 @@ class ConfiguracionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -30,7 +31,7 @@ class ConfiguracionScreen extends StatelessWidget {
               child: Text(
                 'Configuración',
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
             ),
@@ -43,7 +44,8 @@ class ConfiguracionScreen extends StatelessWidget {
                   _FilaConfiguracion(
                     icono: Icons.emergency_outlined,
                     titulo: 'Contacto de emergencia',
-                    onTap: () => context.push('/configuracion/contacto-emergencia'),
+                    onTap: () =>
+                        context.push('/configuracion/contacto-emergencia'),
                   ),
                   const SizedBox(height: 12),
                   _FilaConfiguracion(
@@ -51,6 +53,8 @@ class ConfiguracionScreen extends StatelessWidget {
                     titulo: 'Contrato de licenciatario',
                     onTap: () => context.push('/contrato', extra: true),
                   ),
+                  const SizedBox(height: 12),
+                  const _FilaModoOscuro(),
                 ],
               ),
             ),
@@ -60,7 +64,7 @@ class ConfiguracionScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Divider(color: CLODColors.carbon.withValues(alpha: 0.12)),
+                  Divider(color: CLODColors.borde(context)),
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: () => _cerrarSesion(context),
@@ -100,9 +104,9 @@ class _FilaConfiguracion extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CLODColors.fondoTarjeta(context),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFD3D1C7)),
+          border: Border.all(color: CLODColors.borde(context)),
         ),
         child: Row(
           children: [
@@ -112,15 +116,51 @@ class _FilaConfiguracion extends StatelessWidget {
               child: Text(
                 titulo,
                 style: CLODTextStyles.bodyLarge.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
             ),
             Icon(
               Icons.chevron_right,
-              color: CLODColors.carbon.withValues(alpha: 0.4),
+              color: CLODColors.texto(context).withValues(alpha: 0.4),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilaModoOscuro extends StatelessWidget {
+  const _FilaModoOscuro();
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final activo = themeProvider.modo == ThemeMode.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: CLODColors.fondoTarjeta(context),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: CLODColors.borde(context)),
+      ),
+      child: SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        value: activo,
+        onChanged: (_) => context.read<ThemeProvider>().alternar(),
+        activeTrackColor: CLODColors.azulCLOD,
+        secondary: Icon(
+          Icons.dark_mode_outlined,
+          size: 20,
+          color: CLODColors.azulCLOD,
+        ),
+        title: Text(
+          'Modo oscuro',
+          style: CLODTextStyles.bodyLarge.copyWith(
+            color: CLODColors.texto(context),
+          ),
         ),
       ),
     );

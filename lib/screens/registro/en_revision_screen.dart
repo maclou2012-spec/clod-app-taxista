@@ -51,7 +51,6 @@ class _EnRevisionScreenState extends State<EnRevisionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: _cargando
             ? Center(
@@ -62,80 +61,78 @@ class _EnRevisionScreenState extends State<EnRevisionScreen> {
                 ),
               )
             : _errorMensaje != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: CLODErrorText(_errorMensaje!),
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: CLODErrorText(_errorMensaje!),
+                ),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 64),
+                    Center(
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F7FC),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.access_time,
+                          size: 36,
+                          color: CLODColors.azulCLOD,
+                        ),
+                      ),
                     ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 64),
-                        Center(
-                          child: Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0F7FC),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.access_time,
-                              size: 36,
-                              color: CLODColors.azulCLOD,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Tu perfil está en revisión',
-                          textAlign: TextAlign.center,
-                          style: CLODTextStyles.headingMedium.copyWith(
-                            color: CLODColors.carbon,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Nuestro equipo valida tus documentos. Normalmente '
-                          'toma menos de 24 horas.',
-                          textAlign: TextAlign.center,
-                          style: CLODTextStyles.bodyMedium.copyWith(
-                            color: CLODColors.carbon.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        _FilaEstado(
-                          etiqueta: 'Documentos',
-                          valor: _documentosCompletos
-                              ? 'Recibidos'
-                              : 'Incompletos',
-                          completo: _documentosCompletos,
-                        ),
-                        const SizedBox(height: 16),
-                        _FilaEstado(
-                          etiqueta: 'Identidad',
-                          valor: _verificacionFacialEstado == 'activa'
-                              ? 'Verificada'
-                              : 'Pendiente',
-                          completo: _verificacionFacialEstado == 'activa',
-                        ),
-                        const SizedBox(height: 16),
-                        _FilaEstado(
-                          etiqueta: 'Aprobación final',
-                          valor: switch (_estadoVerificacion) {
-                            'aprobado' => 'Aprobada',
-                            'rechazado' => 'Rechazada',
-                            _ => 'En proceso',
-                          },
-                          completo: _estadoVerificacion == 'aprobado',
-                        ),
-                        const SizedBox(height: 48),
-                      ],
+                    const SizedBox(height: 24),
+                    Text(
+                      'Tu perfil está en revisión',
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.headingMedium.copyWith(
+                        color: CLODColors.texto(context),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Nuestro equipo valida tus documentos. Normalmente '
+                      'toma menos de 24 horas.',
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.bodyMedium.copyWith(
+                        color: CLODColors.texto(context).withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                    _FilaEstado(
+                      etiqueta: 'Documentos',
+                      valor: _documentosCompletos ? 'Recibidos' : 'Incompletos',
+                      completo: _documentosCompletos,
+                    ),
+                    const SizedBox(height: 16),
+                    _FilaEstado(
+                      etiqueta: 'Identidad',
+                      valor: _verificacionFacialEstado == 'activa'
+                          ? 'Verificada'
+                          : 'Pendiente',
+                      completo: _verificacionFacialEstado == 'activa',
+                    ),
+                    const SizedBox(height: 16),
+                    _FilaEstado(
+                      etiqueta: 'Aprobación final',
+                      valor: switch (_estadoVerificacion) {
+                        'aprobado' => 'Aprobada',
+                        'rechazado' => 'Rechazada',
+                        _ => 'En proceso',
+                      },
+                      completo: _estadoVerificacion == 'aprobado',
+                    ),
+                    const SizedBox(height: 48),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -157,9 +154,9 @@ class _FilaEstado extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CLODColors.fondoTarjeta(context),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFD3D1C7)),
+        border: Border.all(color: CLODColors.borde(context)),
       ),
       child: Row(
         children: [
@@ -168,14 +165,14 @@ class _FilaEstado extends StatelessWidget {
             size: 20,
             color: completo
                 ? CLODColors.azulCLOD
-                : CLODColors.carbon.withValues(alpha: 0.4),
+                : CLODColors.texto(context).withValues(alpha: 0.4),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               etiqueta,
               style: CLODTextStyles.bodyLarge.copyWith(
-                color: CLODColors.carbon,
+                color: CLODColors.texto(context),
               ),
             ),
           ),
@@ -184,7 +181,7 @@ class _FilaEstado extends StatelessWidget {
             style: CLODTextStyles.bodyMedium.copyWith(
               color: completo
                   ? CLODColors.azulCLOD
-                  : CLODColors.carbon.withValues(alpha: 0.5),
+                  : CLODColors.texto(context).withValues(alpha: 0.5),
             ),
           ),
         ],

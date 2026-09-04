@@ -84,13 +84,13 @@ class _MembresiaActivaScreenState extends State<MembresiaActivaScreen> {
           Text(
             etiqueta,
             style: CLODTextStyles.bodyMedium.copyWith(
-              color: CLODColors.carbon.withValues(alpha: 0.6),
+              color: CLODColors.texto(context).withValues(alpha: 0.6),
             ),
           ),
           Text(
             valor,
             style: CLODTextStyles.bodyLarge.copyWith(
-              color: CLODColors.carbon,
+              color: CLODColors.texto(context),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -102,7 +102,6 @@ class _MembresiaActivaScreenState extends State<MembresiaActivaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: _cargando
             ? Center(
@@ -113,81 +112,79 @@ class _MembresiaActivaScreenState extends State<MembresiaActivaScreen> {
                 ),
               )
             : _errorMensaje != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: CLODErrorText(_errorMensaje!),
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: CLODErrorText(_errorMensaje!),
+                ),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 64),
+                    Center(
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F7FC),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.check_circle,
+                          size: 36,
+                          color: CLODColors.azulCLOD,
+                        ),
+                      ),
                     ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 64),
-                        Center(
-                          child: Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0F7FC),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.check_circle,
-                              size: 36,
-                              color: CLODColors.azulCLOD,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Membresía activa',
-                          textAlign: TextAlign.center,
-                          style: CLODTextStyles.headingMedium.copyWith(
-                            color: CLODColors.carbon,
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xFFD3D1C7),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              _filaResumen('Plan', _formatearPlan(_tipo)),
-                              const Divider(height: 1),
-                              _filaResumen('Vence', _formatearFecha(_fechaFin)),
-                              const Divider(height: 1),
-                              _filaResumen('Monto', _formatearMonto(_monto)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Ya puedes activar tu disponibilidad',
-                          textAlign: TextAlign.center,
-                          style: CLODTextStyles.bodyMedium.copyWith(
-                            color: CLODColors.carbon.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        CLODPrimaryButton(
-                          label: 'Ir a mi panel',
-                          onPressed: () => context.go('/dashboard'),
-                        ),
-                        const SizedBox(height: 32),
-                      ],
+                    const SizedBox(height: 24),
+                    Text(
+                      'Membresía activa',
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.headingMedium.copyWith(
+                        color: CLODColors.texto(context),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 32),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: CLODColors.fondoTarjeta(context),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: CLODColors.borde(context)),
+                      ),
+                      child: Column(
+                        children: [
+                          _filaResumen('Plan', _formatearPlan(_tipo)),
+                          const Divider(height: 1),
+                          _filaResumen('Vence', _formatearFecha(_fechaFin)),
+                          const Divider(height: 1),
+                          _filaResumen('Monto', _formatearMonto(_monto)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Ya puedes activar tu disponibilidad',
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.bodyMedium.copyWith(
+                        color: CLODColors.texto(context).withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    CLODPrimaryButton(
+                      label: 'Ir a mi panel',
+                      onPressed: () => context.go('/dashboard'),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
       ),
     );
   }

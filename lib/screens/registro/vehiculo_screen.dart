@@ -73,8 +73,8 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
     _anioController.text = (datos['anio'] ?? '').toString();
     _colorController.text = (datos['color'] ?? '').toString();
     _placasController.text = (datos['placas'] ?? '').toString();
-    _numeroEconomicoController.text =
-        (datos['numero_economico'] ?? '').toString();
+    _numeroEconomicoController.text = (datos['numero_economico'] ?? '')
+        .toString();
     _fotoUrlExistente = datos['foto_url'] as String?;
     _placas = _placasController.text;
   }
@@ -116,8 +116,8 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
       final activos = (taxista?['caracteristicas'] as List<dynamic>?) ?? [];
       setState(() {
         _caracteristicas = catalogo.cast<Map<String, dynamic>>();
-        _observacionesController.text =
-            (taxista?['observaciones'] ?? '').toString();
+        _observacionesController.text = (taxista?['observaciones'] ?? '')
+            .toString();
         _plusSeleccionados
           ..clear()
           ..addAll(activos.map((id) => id as int));
@@ -208,7 +208,9 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
       children: [
         Text(
           etiqueta,
-          style: CLODTextStyles.bodyMedium.copyWith(color: CLODColors.carbon),
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.texto(context),
+          ),
         ),
         const SizedBox(height: 8),
         campo,
@@ -219,7 +221,6 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -231,7 +232,7 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
                 'Tu vehículo',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -239,7 +240,7 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
                 'El que uses en tus turnos',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
@@ -328,7 +329,7 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
               Text(
                 'Servicios plus',
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -362,7 +363,8 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
                   controller: _observacionesController,
                   textCapitalization: TextCapitalization.sentences,
                   maxLines: 4,
-                  hintText: 'Ej. Acepto mascotas, tengo espacio para equipaje...',
+                  hintText:
+                      'Ej. Acepto mascotas, tengo espacio para equipaje...',
                 ),
               ),
               if (_errorMensaje != null) ...[
@@ -392,8 +394,6 @@ class _ChipSeleccionable extends StatelessWidget {
     required this.onTap,
   });
 
-  static const Color _colorBorde = Color(0xFFD3D1C7);
-
   final String texto;
   final bool seleccionado;
   final VoidCallback onTap;
@@ -406,10 +406,14 @@ class _ChipSeleccionable extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: seleccionado ? CLODColors.azulCLOD : Colors.white,
+          color: seleccionado
+              ? CLODColors.azulCLOD
+              : CLODColors.fondoTarjeta(context),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: seleccionado ? CLODColors.azulCLOD : _colorBorde,
+            color: seleccionado
+                ? CLODColors.azulCLOD
+                : CLODColors.borde(context),
           ),
         ),
         child: Text(
@@ -458,7 +462,9 @@ class _AreaFotoVehiculo extends StatelessWidget {
                       Text(
                         'Foto del vehículo',
                         style: CLODTextStyles.bodyMedium.copyWith(
-                          color: CLODColors.carbon.withValues(alpha: 0.6),
+                          color: CLODColors.texto(
+                            context,
+                          ).withValues(alpha: 0.6),
                         ),
                       ),
                     ],

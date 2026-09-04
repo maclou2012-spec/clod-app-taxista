@@ -67,10 +67,12 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
         _apiService.obtenerVehiculo(),
       ]);
 
-      final usuario = (resultados[0] as Map<String, dynamic>)['usuario']
-          as Map<String, dynamic>?;
-      final taxista = (resultados[1] as Map<String, dynamic>)['taxista']
-          as Map<String, dynamic>?;
+      final usuario =
+          (resultados[0] as Map<String, dynamic>)['usuario']
+              as Map<String, dynamic>?;
+      final taxista =
+          (resultados[1] as Map<String, dynamic>)['taxista']
+              as Map<String, dynamic>?;
       final clases = (resultados[2] as List<dynamic>)
           .cast<Map<String, dynamic>>();
       final vehiculo = resultados[3] as Map<String, dynamic>?;
@@ -104,7 +106,7 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
   Future<void> _elegirFuenteFoto() async {
     final fuente = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: CLODColors.fondoTarjeta(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -117,7 +119,7 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
               title: Text(
                 'Tomar foto',
                 style: CLODTextStyles.bodyLarge.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
@@ -127,7 +129,7 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
               title: Text(
                 'Elegir de galería',
                 style: CLODTextStyles.bodyLarge.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
@@ -169,7 +171,6 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: _cargando
             ? Center(
@@ -180,99 +181,93 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
                 ),
               )
             : _errorMensaje != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: CLODErrorText(_errorMensaje!),
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: CLODErrorText(_errorMensaje!),
+                ),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 16),
+                    Center(
+                      child: _AvatarPerfil(
+                        fotoUrl: _fotoPerfilUrl,
+                        subiendo: _subiendoFoto,
+                        onTap: _elegirFuenteFoto,
+                      ),
                     ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 16),
-                        Center(
-                          child: _AvatarPerfil(
-                            fotoUrl: _fotoPerfilUrl,
-                            subiendo: _subiendoFoto,
-                            onTap: _elegirFuenteFoto,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _nombre,
-                          textAlign: TextAlign.center,
-                          style: CLODTextStyles.headingMedium.copyWith(
-                            color: CLODColors.carbon,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Licenciatario'
-                          '${_claseNombre != null ? ' · $_claseNombre' : ''}',
-                          textAlign: TextAlign.center,
-                          style: CLODTextStyles.bodyMedium.copyWith(
-                            color: CLODColors.carbon.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        _FilaAcceso(
-                          icono: Icons.directions_car,
-                          titulo: 'Mi vehículo',
-                          onTap: () => context.push(
-                            '/vehiculo',
-                            extra: _vehiculo,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _FilaAcceso(
-                          icono: Icons.attach_money,
-                          titulo: 'Mi tarifa',
-                          onTap: () => context.push(
-                            '/tarifa',
-                            extra: _taxista,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _FilaAcceso(
-                          icono: Icons.description,
-                          titulo: 'Mis documentos',
-                          onTap: () => context.push('/revision'),
-                        ),
-                        const SizedBox(height: 12),
-                        _FilaAcceso(
-                          icono: Icons.history,
-                          titulo: 'Historial de viajes',
-                          onTap: () => context.push('/historial'),
-                        ),
-                        const SizedBox(height: 12),
-                        _FilaAcceso(
-                          icono: Icons.receipt_long,
-                          titulo: 'Mis pagos y facturas',
-                          onTap: () => context.push('/mis-pagos'),
-                        ),
-                        const SizedBox(height: 12),
-                        _FilaAcceso(
-                          icono: Icons.card_giftcard,
-                          titulo: 'Mis referidos',
-                          onTap: () => context.push('/referidos'),
-                        ),
-                        const SizedBox(height: 12),
-                        _FilaAcceso(
-                          icono: Icons.settings,
-                          titulo: 'Configuración',
-                          onTap: () => context.push('/configuracion'),
-                        ),
-                        const SizedBox(height: 12),
-                        _FilaAcceso(
-                          icono: Icons.help_outline,
-                          titulo: 'Ayuda y soporte',
-                          onTap: () => context.push('/ayuda'),
-                        ),
-                      ],
+                    const SizedBox(height: 16),
+                    Text(
+                      _nombre,
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.headingMedium.copyWith(
+                        color: CLODColors.texto(context),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Licenciatario'
+                      '${_claseNombre != null ? ' · $_claseNombre' : ''}',
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.bodyMedium.copyWith(
+                        color: CLODColors.texto(context).withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    _FilaAcceso(
+                      icono: Icons.directions_car,
+                      titulo: 'Mi vehículo',
+                      onTap: () => context.push('/vehiculo', extra: _vehiculo),
+                    ),
+                    const SizedBox(height: 12),
+                    _FilaAcceso(
+                      icono: Icons.attach_money,
+                      titulo: 'Mi tarifa',
+                      onTap: () => context.push('/tarifa', extra: _taxista),
+                    ),
+                    const SizedBox(height: 12),
+                    _FilaAcceso(
+                      icono: Icons.description,
+                      titulo: 'Mis documentos',
+                      onTap: () => context.push('/revision'),
+                    ),
+                    const SizedBox(height: 12),
+                    _FilaAcceso(
+                      icono: Icons.history,
+                      titulo: 'Historial de viajes',
+                      onTap: () => context.push('/historial'),
+                    ),
+                    const SizedBox(height: 12),
+                    _FilaAcceso(
+                      icono: Icons.receipt_long,
+                      titulo: 'Mis pagos y facturas',
+                      onTap: () => context.push('/mis-pagos'),
+                    ),
+                    const SizedBox(height: 12),
+                    _FilaAcceso(
+                      icono: Icons.card_giftcard,
+                      titulo: 'Mis referidos',
+                      onTap: () => context.push('/referidos'),
+                    ),
+                    const SizedBox(height: 12),
+                    _FilaAcceso(
+                      icono: Icons.settings,
+                      titulo: 'Configuración',
+                      onTap: () => context.push('/configuracion'),
+                    ),
+                    const SizedBox(height: 12),
+                    _FilaAcceso(
+                      icono: Icons.help_outline,
+                      titulo: 'Ayuda y soporte',
+                      onTap: () => context.push('/ayuda'),
+                    ),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -297,9 +292,9 @@ class _FilaAcceso extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: CLODColors.fondoTarjeta(context),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFD3D1C7)),
+          border: Border.all(color: CLODColors.borde(context)),
         ),
         child: Row(
           children: [
@@ -309,13 +304,13 @@ class _FilaAcceso extends StatelessWidget {
               child: Text(
                 titulo,
                 style: CLODTextStyles.bodyLarge.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
             ),
             Icon(
               Icons.chevron_right,
-              color: CLODColors.carbon.withValues(alpha: 0.4),
+              color: CLODColors.texto(context).withValues(alpha: 0.4),
             ),
           ],
         ),
@@ -349,10 +344,10 @@ class _AvatarPerfil extends StatelessWidget {
             backgroundImage: tieneFoto ? NetworkImage(fotoUrl!) : null,
             child: tieneFoto
                 ? null
-                : const Icon(
+                : Icon(
                     Icons.person,
                     size: 40,
-                    color: CLODColors.grisClaro,
+                    color: CLODColors.texto(context),
                   ),
           ),
           if (subiendo)

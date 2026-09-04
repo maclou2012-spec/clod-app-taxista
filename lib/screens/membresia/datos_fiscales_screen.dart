@@ -8,8 +8,6 @@ import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
 import '../../widgets/clod_text_field.dart';
 
-const Color _colorBordeCampo = Color(0xFFD3D1C7);
-
 class _Opcion {
   const _Opcion(this.clave, this.etiqueta);
 
@@ -33,8 +31,7 @@ class _DatosFiscalesScreenState extends State<DatosFiscalesScreen> {
   final ApiService _apiService = ApiService();
 
   final TextEditingController _rfcController = TextEditingController();
-  final TextEditingController _razonSocialController =
-      TextEditingController();
+  final TextEditingController _razonSocialController = TextEditingController();
   final TextEditingController _cpController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
@@ -101,8 +98,7 @@ class _DatosFiscalesScreenState extends State<DatosFiscalesScreen> {
           _rfcController.text = (datos['rfc'] ?? '').toString();
           _razonSocialController.text = (datos['razon_social'] ?? '')
               .toString();
-          _cpController.text = (datos['codigo_postal_fiscal'] ?? '')
-              .toString();
+          _cpController.text = (datos['codigo_postal_fiscal'] ?? '').toString();
           _emailController.text = (datos['email_fiscal'] ?? '').toString();
         }
       });
@@ -167,7 +163,9 @@ class _DatosFiscalesScreenState extends State<DatosFiscalesScreen> {
       children: [
         Text(
           etiqueta,
-          style: CLODTextStyles.bodyMedium.copyWith(color: CLODColors.carbon),
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.texto(context),
+          ),
         ),
         const SizedBox(height: 8),
         campo,
@@ -192,17 +190,19 @@ class _DatosFiscalesScreenState extends State<DatosFiscalesScreen> {
           )
           .toList(),
       onChanged: onChanged,
-      style: CLODTextStyles.bodyLarge.copyWith(color: CLODColors.carbon),
+      style: CLODTextStyles.bodyLarge.copyWith(
+        color: CLODColors.texto(context),
+      ),
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _colorBordeCampo),
+          borderSide: BorderSide(color: CLODColors.borde(context)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _colorBordeCampo),
+          borderSide: BorderSide(color: CLODColors.borde(context)),
         ),
       ),
     );
@@ -211,11 +211,9 @@ class _DatosFiscalesScreenState extends State<DatosFiscalesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       appBar: AppBar(
-        backgroundColor: CLODColors.grisClaro,
         elevation: 0,
-        iconTheme: IconThemeData(color: CLODColors.carbon),
+        iconTheme: IconThemeData(color: CLODColors.texto(context)),
       ),
       body: SafeArea(
         top: false,
@@ -238,7 +236,7 @@ class _DatosFiscalesScreenState extends State<DatosFiscalesScreen> {
                       'Datos fiscales',
                       textAlign: TextAlign.center,
                       style: CLODTextStyles.headingMedium.copyWith(
-                        color: CLODColors.carbon,
+                        color: CLODColors.texto(context),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -246,7 +244,7 @@ class _DatosFiscalesScreenState extends State<DatosFiscalesScreen> {
                       'Los usaremos para generar tu factura',
                       textAlign: TextAlign.center,
                       style: CLODTextStyles.bodyMedium.copyWith(
-                        color: CLODColors.carbon.withValues(alpha: 0.6),
+                        color: CLODColors.texto(context).withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -297,8 +295,7 @@ class _DatosFiscalesScreenState extends State<DatosFiscalesScreen> {
                       _selector(
                         valor: _usoCfdi,
                         opciones: _usosCfdi,
-                        onChanged: (valor) =>
-                            setState(() => _usoCfdi = valor!),
+                        onChanged: (valor) => setState(() => _usoCfdi = valor!),
                       ),
                     ),
                     const SizedBox(height: 20),

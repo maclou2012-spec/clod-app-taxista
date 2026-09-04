@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'config/mapbox_config.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
+import 'providers/theme_provider.dart';
 import 'routes/app_router.dart';
 import 'theme/clod_theme.dart';
 
@@ -19,20 +20,34 @@ void main() async {
       'pk_test_51QWS2W08H3cXOv0qK2RLNVr2Sb6RQ1o5ifUD8RTXiipQYjqvDBe1zLidwWtIiAgZkCFff2DrSZjkpALSy2BF0NZC00op9M30Gb';
   await Stripe.instance.applySettings();
 
-  runApp(const MyApp());
+  final themeProvider = ThemeProvider();
+  await themeProvider.cargarPreferencia();
+
+  runApp(MyApp(themeProvider: themeProvider));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.themeProvider});
+
+  final ThemeProvider themeProvider;
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<AuthProvider>(
-      create: (_) => AuthProvider(),
-      child: MaterialApp.router(
-        title: 'TaxiCLOD',
-        theme: CLODTheme.dark,
-        routerConfig: appRouter,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+        ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
+      ],
+      child: Builder(
+        builder: (context) {
+          return MaterialApp.router(
+            title: 'TaxiCLOD',
+            theme: CLODTheme.light,
+            darkTheme: CLODTheme.dark,
+            themeMode: context.watch<ThemeProvider>().modo,
+            routerConfig: appRouter,
+          );
+        },
       ),
     );
   }

@@ -197,7 +197,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       isDismissible: false,
       enableDrag: false,
-      backgroundColor: CLODColors.carbon,
       builder: (sheetContext) => _TarjetaSolicitud(
         solicitud: solicitud,
         onIgnorar: () => Navigator.of(sheetContext).pop(),
@@ -397,9 +396,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.carbon,
       appBar: AppBar(
-        backgroundColor: CLODColors.carbon,
         elevation: 0,
         automaticallyImplyLeading: false,
         // Acceso temporal a Perfil hasta que exista una navegación inferior
@@ -457,9 +454,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         _fotoPerfilUrl != null &&
                                             _fotoPerfilUrl!.isNotEmpty
                                         ? null
-                                        : const Icon(
+                                        : Icon(
                                             Icons.person,
-                                            color: CLODColors.grisClaro,
+                                            color: CLODColors.texto(context),
                                           ),
                                   ),
                                   const SizedBox(width: 16),
@@ -514,8 +511,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             : 'Desconectado',
                                         style: CLODTextStyles.bodySmall
                                             .copyWith(
-                                              color: CLODColors.grisClaro
-                                                  .withValues(alpha: 0.6),
+                                              color: CLODColors.texto(
+                                                context,
+                                              ).withValues(alpha: 0.6),
                                             ),
                                       ),
                                     ),
@@ -564,9 +562,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 'Tú decides cuándo conectarte y qué solicitudes tomar',
                                 textAlign: TextAlign.center,
                                 style: CLODTextStyles.bodySmall.copyWith(
-                                  color: CLODColors.grisClaro.withValues(
-                                    alpha: 0.5,
-                                  ),
+                                  color: CLODColors.texto(
+                                    context,
+                                  ).withValues(alpha: 0.5),
                                 ),
                               ),
                             ],
@@ -603,7 +601,7 @@ class _IndicadorConexionSocket extends StatelessWidget {
             'Reconectando...',
           ),
           EstadoConexionSocket.desconectado => (
-            CLODColors.grisClaro.withValues(alpha: 0.4),
+            CLODColors.texto(context).withValues(alpha: 0.4),
             'Sin conexión',
           ),
         };
@@ -619,7 +617,7 @@ class _IndicadorConexionSocket extends StatelessWidget {
             Text(
               etiqueta,
               style: CLODTextStyles.bodySmall.copyWith(
-                color: CLODColors.grisClaro.withValues(alpha: 0.6),
+                color: CLODColors.texto(context).withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -650,7 +648,7 @@ class _TarjetaEstadistica extends StatelessWidget {
           Text(
             etiqueta,
             style: CLODTextStyles.bodySmall.copyWith(
-              color: CLODColors.grisClaro.withValues(alpha: 0.6),
+              color: CLODColors.texto(context).withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -717,7 +715,7 @@ class _TarjetaSolicitud extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: CLODColors.grisClaro,
                       side: BorderSide(
-                        color: CLODColors.grisClaro.withValues(alpha: 0.4),
+                        color: CLODColors.texto(context).withValues(alpha: 0.4),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),

@@ -47,8 +47,8 @@ class _ServicioScreenState extends State<ServicioScreen> {
 
       setState(() {
         _clases = (resultados[0] as List<dynamic>).cast<Map<String, dynamic>>();
-        _caracteristicas =
-            (resultados[1] as List<dynamic>).cast<Map<String, dynamic>>();
+        _caracteristicas = (resultados[1] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
         _claseSeleccionadaId = claseIdRaw is int
             ? claseIdRaw
             : int.tryParse('$claseIdRaw');
@@ -99,14 +99,15 @@ class _ServicioScreenState extends State<ServicioScreen> {
   Widget _tituloSeccion(String texto) {
     return Text(
       texto,
-      style: CLODTextStyles.headingSmall.copyWith(color: CLODColors.carbon),
+      style: CLODTextStyles.headingSmall.copyWith(
+        color: CLODColors.texto(context),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: _cargando
             ? Center(
@@ -117,76 +118,76 @@ class _ServicioScreenState extends State<ServicioScreen> {
                 ),
               )
             : _errorCarga != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: CLODErrorText(_errorCarga!),
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: CLODErrorText(_errorCarga!),
+                ),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 48),
+                    Text(
+                      'Tu servicio',
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.headingMedium.copyWith(
+                        color: CLODColors.texto(context),
+                      ),
                     ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 48),
-                        Text(
-                          'Tu servicio',
-                          textAlign: TextAlign.center,
-                          style: CLODTextStyles.headingMedium.copyWith(
-                            color: CLODColors.carbon,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Elige tu clase y diferenciadores',
-                          textAlign: TextAlign.center,
-                          style: CLODTextStyles.bodyMedium.copyWith(
-                            color: CLODColors.carbon.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        _tituloSeccion('Clase de servicio'),
-                        const SizedBox(height: 16),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: _clases.map((clase) {
-                            final id = clase['id'] as int;
-                            final nombre = clase['nombre'] as String? ?? '';
-                            return _ChipSeleccionable(
-                              texto: nombre,
-                              seleccionado: _claseSeleccionadaId == id,
-                              onTap: () => _onSeleccionarClase(id),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 32),
-                        _tituloSeccion('Características plus'),
-                        const SizedBox(height: 16),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: _caracteristicas.map((caracteristica) {
-                            final id = caracteristica['id'] as int;
-                            final nombre =
-                                caracteristica['nombre'] as String? ?? '';
-                            return _ChipSeleccionable(
-                              texto: nombre,
-                              seleccionado: _plusSeleccionados.contains(id),
-                              onTap: () => _onTogglePlus(id),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 32),
-                        CLODPrimaryButton(
-                          label: 'Continuar',
-                          habilitado: _claseSeleccionadaId != null,
-                          onPressed: () => context.go('/tarifa'),
-                        ),
-                        const SizedBox(height: 32),
-                      ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'Elige tu clase y diferenciadores',
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.bodyMedium.copyWith(
+                        color: CLODColors.texto(context).withValues(alpha: 0.6),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 32),
+                    _tituloSeccion('Clase de servicio'),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: _clases.map((clase) {
+                        final id = clase['id'] as int;
+                        final nombre = clase['nombre'] as String? ?? '';
+                        return _ChipSeleccionable(
+                          texto: nombre,
+                          seleccionado: _claseSeleccionadaId == id,
+                          onTap: () => _onSeleccionarClase(id),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 32),
+                    _tituloSeccion('Características plus'),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: _caracteristicas.map((caracteristica) {
+                        final id = caracteristica['id'] as int;
+                        final nombre =
+                            caracteristica['nombre'] as String? ?? '';
+                        return _ChipSeleccionable(
+                          texto: nombre,
+                          seleccionado: _plusSeleccionados.contains(id),
+                          onTap: () => _onTogglePlus(id),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 32),
+                    CLODPrimaryButton(
+                      label: 'Continuar',
+                      habilitado: _claseSeleccionadaId != null,
+                      onPressed: () => context.go('/tarifa'),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -198,8 +199,6 @@ class _ChipSeleccionable extends StatelessWidget {
     required this.seleccionado,
     required this.onTap,
   });
-
-  static const Color _colorBorde = Color(0xFFD3D1C7);
 
   final String texto;
   final bool seleccionado;
@@ -213,10 +212,14 @@ class _ChipSeleccionable extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: seleccionado ? CLODColors.azulCLOD : Colors.white,
+          color: seleccionado
+              ? CLODColors.azulCLOD
+              : CLODColors.fondoTarjeta(context),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: seleccionado ? CLODColors.azulCLOD : _colorBorde,
+            color: seleccionado
+                ? CLODColors.azulCLOD
+                : CLODColors.borde(context),
           ),
         ),
         child: Text(

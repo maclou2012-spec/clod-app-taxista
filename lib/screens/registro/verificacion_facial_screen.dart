@@ -90,7 +90,6 @@ class _VerificacionFacialScreenState extends State<VerificacionFacialScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.carbon,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -112,7 +111,7 @@ class _VerificacionFacialScreenState extends State<VerificacionFacialScreen> {
                   _textoInstruccion,
                   textAlign: TextAlign.center,
                   style: CLODTextStyles.bodyMedium.copyWith(
-                    color: CLODColors.grisClaro.withValues(alpha: 0.8),
+                    color: CLODColors.texto(context).withValues(alpha: 0.8),
                   ),
                 ),
                 if (_errorMensaje != null) ...[

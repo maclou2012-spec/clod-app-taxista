@@ -32,10 +32,18 @@ double? _campoDecimal(Map<String, dynamic> mapa, List<String> llaves) {
 
 // Las coordenadas pueden venir anidadas (solicitud['origen'] = {lat,lng}) o
 // planas (solicitud['origen_lat'], solicitud['origen_lng']).
-(double?, double?) _coordenadas(Map<String, dynamic> solicitud, String prefijo) {
+(double?, double?) _coordenadas(
+  Map<String, dynamic> solicitud,
+  String prefijo,
+) {
   final anidado = solicitud[prefijo];
   final mapa = anidado is Map<String, dynamic> ? anidado : solicitud;
-  final lat = _campoDecimal(mapa, ['lat', 'latitud', 'latitude', '${prefijo}_lat']);
+  final lat = _campoDecimal(mapa, [
+    'lat',
+    'latitud',
+    'latitude',
+    '${prefijo}_lat',
+  ]);
   final lng = _campoDecimal(mapa, [
     'lng',
     'lon',
@@ -76,9 +84,7 @@ class _SolicitudesPendientesScreenState
   void initState() {
     super.initState();
     _cargar();
-    _nuevaSolicitudSub = _socketService.nuevaSolicitud.listen(
-      (_) => _cargar(),
-    );
+    _nuevaSolicitudSub = _socketService.nuevaSolicitud.listen((_) => _cargar());
   }
 
   @override
@@ -125,9 +131,9 @@ class _SolicitudesPendientesScreenState
       );
       if (!mounted) return;
       setState(() {
-        _solicitudes = solicitudes
-            .cast<Map<String, dynamic>>()
-            .toList(growable: false);
+        _solicitudes = solicitudes.cast<Map<String, dynamic>>().toList(
+          growable: false,
+        );
         _cargando = false;
       });
     } catch (e) {
@@ -176,8 +182,7 @@ class _SolicitudesPendientesScreenState
               'destino',
             ]) ??
             '—',
-        tarifa:
-            _campoTexto(solicitud, ['tarifa_ofrecida', 'tarifa']) ?? '—',
+        tarifa: _campoTexto(solicitud, ['tarifa_ofrecida', 'tarifa']) ?? '—',
         horaInicio: DateTime.now(),
         origenLat: origenLat,
         origenLng: origenLng,
@@ -193,7 +198,9 @@ class _SolicitudesPendientesScreenState
       final mensaje = e.response?.statusCode == 409
           ? 'Otro taxista ya tomó esta solicitud.'
           : 'No se pudo aceptar la solicitud. Intenta de nuevo.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(mensaje)));
       if (e.response?.statusCode == 409) _cargar();
     } catch (e) {
       if (!mounted) return;
@@ -209,11 +216,12 @@ class _SolicitudesPendientesScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.carbon,
       appBar: AppBar(
-        backgroundColor: CLODColors.carbon,
         elevation: 0,
-        title: Text('Solicitudes pendientes', style: CLODTextStyles.headingSmall),
+        title: Text(
+          'Solicitudes pendientes',
+          style: CLODTextStyles.headingSmall,
+        ),
       ),
       body: SafeArea(child: _cuerpo()),
     );
@@ -258,7 +266,6 @@ class _SolicitudesPendientesScreenState
     return RefreshIndicator(
       onRefresh: _cargar,
       color: CLODColors.azulCLOD,
-      backgroundColor: CLODColors.carbon,
       child: _solicitudes.isEmpty
           ? ListView(
               padding: const EdgeInsets.all(24),
@@ -268,7 +275,7 @@ class _SolicitudesPendientesScreenState
                   'No hay solicitudes disponibles en tu zona por ahora.',
                   textAlign: TextAlign.center,
                   style: CLODTextStyles.bodyLarge.copyWith(
-                    color: CLODColors.grisClaro.withValues(alpha: 0.6),
+                    color: CLODColors.texto(context).withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -372,7 +379,7 @@ class _TarjetaSolicitudPendiente extends StatelessWidget {
                     Icon(
                       Icons.location_on,
                       size: 16,
-                      color: CLODColors.grisClaro.withValues(alpha: 0.5),
+                      color: CLODColors.texto(context).withValues(alpha: 0.5),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -381,7 +388,9 @@ class _TarjetaSolicitudPendiente extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: CLODTextStyles.bodySmall.copyWith(
-                          color: CLODColors.grisClaro.withValues(alpha: 0.6),
+                          color: CLODColors.texto(
+                            context,
+                          ).withValues(alpha: 0.6),
                         ),
                       ),
                     ),
@@ -415,7 +424,9 @@ class _TarjetaSolicitudPendiente extends StatelessWidget {
                       Text(
                         'Toca para aceptar',
                         style: CLODTextStyles.bodySmall.copyWith(
-                          color: CLODColors.grisClaro.withValues(alpha: 0.5),
+                          color: CLODColors.texto(
+                            context,
+                          ).withValues(alpha: 0.5),
                         ),
                       ),
                   ],

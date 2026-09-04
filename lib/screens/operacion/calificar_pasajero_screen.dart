@@ -66,7 +66,6 @@ class _CalificarPasajeroScreenState extends State<CalificarPasajeroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.carbon,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -84,7 +83,7 @@ class _CalificarPasajeroScreenState extends State<CalificarPasajeroScreen> {
                 widget.args.viajeArgs.pasajeroNombre,
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.grisClaro.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
@@ -93,10 +92,7 @@ class _CalificarPasajeroScreenState extends State<CalificarPasajeroScreen> {
                 onSeleccionar: _onSeleccionarEstrella,
               ),
               const SizedBox(height: 32),
-              Text(
-                'Comentario (opcional)',
-                style: CLODTextStyles.bodyMedium,
-              ),
+              Text('Comentario (opcional)', style: CLODTextStyles.bodyMedium),
               const SizedBox(height: 8),
               CLODTextField(
                 controller: _comentarioController,
@@ -117,7 +113,7 @@ class _CalificarPasajeroScreenState extends State<CalificarPasajeroScreen> {
                   child: Text(
                     'Omitir',
                     style: CLODTextStyles.bodyMedium.copyWith(
-                      color: CLODColors.grisClaro.withValues(alpha: 0.5),
+                      color: CLODColors.texto(context).withValues(alpha: 0.5),
                     ),
                   ),
                 ),

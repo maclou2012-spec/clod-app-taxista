@@ -80,7 +80,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     final puedeReenviar = _segundosRestantes == 0 && !authProvider.cargando;
 
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -92,7 +91,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 'Verifica tu código',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -100,7 +99,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 'Enviamos un código de 6 dígitos a +52 ${widget.telefono}',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
@@ -118,12 +117,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   focusedFillColor: Colors.white,
                   filledFillColor: Colors.white,
                   completeFillColor: Colors.white,
-                  borderColor: CLODColors.carbon.withValues(alpha: 0.15),
+                  borderColor: CLODColors.texto(
+                    context,
+                  ).withValues(alpha: 0.15),
                   focusedBorderColor: CLODColors.azulCLOD,
                   filledBorderColor: CLODColors.azulCLOD,
                   completeBorderColor: CLODColors.azulCLOD,
                   textStyle: CLODTextStyles.headingMedium.copyWith(
-                    color: CLODColors.carbon,
+                    color: CLODColors.texto(context),
                   ),
                 ),
                 onCompleted: _verificarCodigo,
@@ -150,8 +151,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               const SizedBox(height: 32),
               Center(
                 child: TextButton(
-                  onPressed:
-                      puedeReenviar ? () => _reenviarCodigo(authProvider) : null,
+                  onPressed: puedeReenviar
+                      ? () => _reenviarCodigo(authProvider)
+                      : null,
                   child: Text(
                     _segundosRestantes == 0
                         ? 'Reenviar código'
@@ -159,7 +161,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     style: CLODTextStyles.bodyMedium.copyWith(
                       color: _segundosRestantes == 0
                           ? CLODColors.azulCLOD
-                          : CLODColors.carbon.withValues(alpha: 0.4),
+                          : CLODColors.texto(context).withValues(alpha: 0.4),
                     ),
                   ),
                 ),

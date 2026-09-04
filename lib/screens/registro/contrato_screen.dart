@@ -25,7 +25,6 @@ class _ContratoScreenState extends State<ContratoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -37,7 +36,7 @@ class _ContratoScreenState extends State<ContratoScreen> {
                 'Contrato de licenciatario',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -45,17 +44,17 @@ class _ContratoScreenState extends State<ContratoScreen> {
                 'Versión vigente — léelo con calma',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 24),
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: CLODColors.fondoTarjeta(context),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: CLODColors.carbon.withValues(alpha: 0.15),
+                      color: CLODColors.texto(context).withValues(alpha: 0.15),
                     ),
                   ),
                   padding: const EdgeInsets.all(16),
@@ -121,7 +120,7 @@ class _ContratoScreenState extends State<ContratoScreen> {
                         child: Text(
                           'He leído y acepto los términos',
                           style: CLODTextStyles.bodyMedium.copyWith(
-                            color: CLODColors.carbon,
+                            color: CLODColors.texto(context),
                           ),
                         ),
                       ),
@@ -156,14 +155,14 @@ class _ContratoScreenState extends State<ContratoScreen> {
           Text(
             titulo,
             style: CLODTextStyles.headingSmall.copyWith(
-              color: CLODColors.carbon,
+              color: CLODColors.texto(context),
             ),
           ),
           const SizedBox(height: 6),
           Text(
             texto,
             style: CLODTextStyles.bodyMedium.copyWith(
-              color: CLODColors.carbon.withValues(alpha: 0.75),
+              color: CLODColors.texto(context).withValues(alpha: 0.75),
             ),
           ),
           const SizedBox(height: 6),

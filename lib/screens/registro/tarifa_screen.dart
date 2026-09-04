@@ -57,8 +57,8 @@ class _TarifaScreenState extends State<TarifaScreen> {
   void _prefillDesde(Map<String, dynamic> datos) {
     _montoController.text = (datos['tarifa_base'] ?? '').toString();
     _costoPorKmController.text = (datos['costo_por_km'] ?? '').toString();
-    _costoPorMinutoController.text =
-        (datos['costo_por_minuto'] ?? '').toString();
+    _costoPorMinutoController.text = (datos['costo_por_minuto'] ?? '')
+        .toString();
     _montoTexto = _montoController.text;
   }
 
@@ -124,7 +124,9 @@ class _TarifaScreenState extends State<TarifaScreen> {
       children: [
         Text(
           etiqueta,
-          style: CLODTextStyles.bodyMedium.copyWith(color: CLODColors.carbon),
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.texto(context),
+          ),
         ),
         const SizedBox(height: 8),
         campo,
@@ -136,11 +138,10 @@ class _TarifaScreenState extends State<TarifaScreen> {
   Widget build(BuildContext context) {
     final estiloMonto = CLODTextStyles.headingLarge.copyWith(
       fontSize: 44,
-      color: CLODColors.carbon,
+      color: CLODColors.texto(context),
     );
 
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -152,7 +153,7 @@ class _TarifaScreenState extends State<TarifaScreen> {
                 'Tu Tarifa Mínima',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -162,7 +163,7 @@ class _TarifaScreenState extends State<TarifaScreen> {
                 'viaje.',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 24),
@@ -171,7 +172,7 @@ class _TarifaScreenState extends State<TarifaScreen> {
                 'desde tu panel de control:',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
@@ -203,7 +204,7 @@ class _TarifaScreenState extends State<TarifaScreen> {
                   Text(
                     'MXN',
                     style: CLODTextStyles.bodyMedium.copyWith(
-                      color: CLODColors.carbon.withValues(alpha: 0.5),
+                      color: CLODColors.texto(context).withValues(alpha: 0.5),
                     ),
                   ),
                 ],
@@ -247,7 +248,7 @@ class _TarifaScreenState extends State<TarifaScreen> {
                   'tus ganancias.',
                   textAlign: TextAlign.center,
                   style: CLODTextStyles.bodyMedium.copyWith(
-                    color: CLODColors.carbon,
+                    color: CLODColors.texto(context),
                   ),
                 ),
               ),

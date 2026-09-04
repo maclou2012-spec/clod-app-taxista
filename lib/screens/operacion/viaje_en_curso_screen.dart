@@ -181,7 +181,10 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
         final viajeId = _extraerViajeId(respuesta, widget.args.solicitudId);
         context.go(
           '/calificar-pasajero',
-          extra: CalificarPasajeroArgs(viajeId: viajeId, viajeArgs: widget.args),
+          extra: CalificarPasajeroArgs(
+            viajeId: viajeId,
+            viajeArgs: widget.args,
+          ),
         );
       }
     } catch (e) {
@@ -272,7 +275,6 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.carbon,
       body: SafeArea(
         child: Column(
           children: [

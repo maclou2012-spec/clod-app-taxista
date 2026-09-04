@@ -43,7 +43,12 @@ double? _campoDecimal(Map<String, dynamic> mapa, List<String> llaves) {
 (double?, double?) _coordenadas(Map<String, dynamic> viaje, String prefijo) {
   final anidado = viaje[prefijo];
   final mapa = anidado is Map<String, dynamic> ? anidado : viaje;
-  final lat = _campoDecimal(mapa, ['lat', 'latitud', 'latitude', '${prefijo}_lat']);
+  final lat = _campoDecimal(mapa, [
+    'lat',
+    'latitud',
+    'latitude',
+    '${prefijo}_lat',
+  ]);
   final lng = _campoDecimal(mapa, [
     'lng',
     'lon',
@@ -100,7 +105,9 @@ class _SplashScreenState extends State<SplashScreen> {
       // 'aceptado' (yendo al pasajero), 'en_espera' (ya llegó) y 'en_curso'
       // (viaje iniciado) son todos "viaje activo" — solo 'buscando' (una
       // solicitud que el taxista aún no ha aceptado) no aplica aquí.
-      if (estado != 'aceptado' && estado != 'en_espera' && estado != 'en_curso') {
+      if (estado != 'aceptado' &&
+          estado != 'en_espera' &&
+          estado != 'en_curso') {
         return false;
       }
 
@@ -122,13 +129,25 @@ class _SplashScreenState extends State<SplashScreen> {
       final args = ViajeEnCursoArgs(
         solicitudId: solicitudId,
         pasajeroNombre:
-            _campoTexto(viaje, ['pasajero_nombre', 'nombre_pasajero', 'nombre']) ??
+            _campoTexto(viaje, [
+              'pasajero_nombre',
+              'nombre_pasajero',
+              'nombre',
+            ]) ??
             'Pasajero',
         origenDireccion:
-            _campoTexto(viaje, ['origen_direccion', 'direccion_origen', 'origen']) ??
+            _campoTexto(viaje, [
+              'origen_direccion',
+              'direccion_origen',
+              'origen',
+            ]) ??
             '—',
         destinoDireccion:
-            _campoTexto(viaje, ['destino_direccion', 'direccion_destino', 'destino']) ??
+            _campoTexto(viaje, [
+              'destino_direccion',
+              'direccion_destino',
+              'destino',
+            ]) ??
             '—',
         tarifa: _campoTexto(viaje, ['tarifa_ofrecida', 'tarifa']) ?? '—',
         horaInicio: DateTime.now(),
@@ -155,20 +174,13 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.carbon,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              'assets/images/icono.png',
-              width: 220,
-            ),
+            Image.asset('assets/images/icono.png', width: 220),
             const SizedBox(height: 24),
-            Text(
-              'Taxi CLOD',
-              style: CLODTextStyles.headingLarge,
-            ),
+            Text('Taxi CLOD', style: CLODTextStyles.headingLarge),
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -176,7 +188,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 'El directorio digital publicitario de servicio de Taxi hecho Sólo para Taxistas',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodySmall.copyWith(
-                  color: CLODColors.grisClaro.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
             ),

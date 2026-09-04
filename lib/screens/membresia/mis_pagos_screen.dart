@@ -110,15 +110,16 @@ class _MisPagosScreenState extends State<MisPagosScreen> {
       final estado = resultados[0] as Map<String, dynamic>;
       final membresiaActiva =
           estado['membresia_activa'] as Map<String, dynamic>?;
-      final pagos = (resultados[1] as List<dynamic>)
-          .whereType<Map<String, dynamic>>()
-          .toList()
-        ..sort((a, b) {
-          final fechaA = _fechaPago(a);
-          final fechaB = _fechaPago(b);
-          if (fechaA == null || fechaB == null) return 0;
-          return fechaB.compareTo(fechaA);
-        });
+      final pagos =
+          (resultados[1] as List<dynamic>)
+              .whereType<Map<String, dynamic>>()
+              .toList()
+            ..sort((a, b) {
+              final fechaA = _fechaPago(a);
+              final fechaB = _fechaPago(b);
+              if (fechaA == null || fechaB == null) return 0;
+              return fechaB.compareTo(fechaA);
+            });
 
       setState(() {
         _fechaFinActiva = membresiaActiva?['fecha_fin'] as String?;
@@ -138,7 +139,6 @@ class _MisPagosScreenState extends State<MisPagosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -149,7 +149,7 @@ class _MisPagosScreenState extends State<MisPagosScreen> {
               child: Text(
                 'Mis pagos y facturas',
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
             ),
@@ -178,7 +178,9 @@ class _MisPagosScreenState extends State<MisPagosScreen> {
                         Text(
                           'Historial de pagos',
                           style: CLODTextStyles.bodyMedium.copyWith(
-                            color: CLODColors.carbon.withValues(alpha: 0.6),
+                            color: CLODColors.texto(
+                              context,
+                            ).withValues(alpha: 0.6),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -189,9 +191,9 @@ class _MisPagosScreenState extends State<MisPagosScreen> {
                               child: Text(
                                 'Aún no tienes pagos registrados',
                                 style: CLODTextStyles.bodyMedium.copyWith(
-                                  color: CLODColors.carbon.withValues(
-                                    alpha: 0.5,
-                                  ),
+                                  color: CLODColors.texto(
+                                    context,
+                                  ).withValues(alpha: 0.5),
                                 ),
                               ),
                             ),
@@ -225,9 +227,9 @@ class _TarjetaEstadoMembresia extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CLODColors.fondoTarjeta(context),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFD3D1C7)),
+        border: Border.all(color: CLODColors.borde(context)),
       ),
       child: Row(
         children: [
@@ -235,7 +237,7 @@ class _TarjetaEstadoMembresia extends StatelessWidget {
             activa ? Icons.check_circle : Icons.error_outline,
             color: activa
                 ? CLODColors.azulCLOD
-                : CLODColors.carbon.withValues(alpha: 0.4),
+                : CLODColors.texto(context).withValues(alpha: 0.4),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -244,7 +246,7 @@ class _TarjetaEstadoMembresia extends StatelessWidget {
                   ? 'Activa hasta ${_formatearFechaCorta(fechaFin)}'
                   : 'Sin membresía activa',
               style: CLODTextStyles.bodyLarge.copyWith(
-                color: CLODColors.carbon,
+                color: CLODColors.texto(context),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -277,9 +279,7 @@ class _TarjetaPagoState extends State<_TarjetaPago> {
       _error = null;
     });
     try {
-      final enRevision = await _apiService.solicitarFacturaTardia(
-        membresiaId,
-      );
+      final enRevision = await _apiService.solicitarFacturaTardia(membresiaId);
       if (mounted) {
         setState(() => _resultado = enRevision ? 'en_revision' : 'generada');
       }
@@ -318,9 +318,9 @@ class _TarjetaPagoState extends State<_TarjetaPago> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CLODColors.fondoTarjeta(context),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFD3D1C7)),
+        border: Border.all(color: CLODColors.borde(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,7 +331,7 @@ class _TarjetaPagoState extends State<_TarjetaPago> {
               Text(
                 _formatearPlan(tipo),
                 style: CLODTextStyles.bodyLarge.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -348,7 +348,7 @@ class _TarjetaPagoState extends State<_TarjetaPago> {
           Text(
             fecha != null ? _formatearFecha(fecha) : '—',
             style: CLODTextStyles.bodySmall.copyWith(
-              color: CLODColors.carbon.withValues(alpha: 0.5),
+              color: CLODColors.texto(context).withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: 12),
@@ -393,7 +393,7 @@ class _TarjetaPagoState extends State<_TarjetaPago> {
       return Text(
         'Tu solicitud está en revisión, te avisaremos',
         style: CLODTextStyles.bodySmall.copyWith(
-          color: CLODColors.carbon.withValues(alpha: 0.6),
+          color: CLODColors.texto(context).withValues(alpha: 0.6),
         ),
       );
     }
@@ -402,7 +402,7 @@ class _TarjetaPagoState extends State<_TarjetaPago> {
       return Text(
         'Periodo fiscal cerrado',
         style: CLODTextStyles.bodySmall.copyWith(
-          color: CLODColors.carbon.withValues(alpha: 0.4),
+          color: CLODColors.texto(context).withValues(alpha: 0.4),
         ),
       );
     }

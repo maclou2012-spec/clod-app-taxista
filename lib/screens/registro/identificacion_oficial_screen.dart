@@ -99,7 +99,9 @@ class _IdentificacionOficialScreenState
       children: [
         Text(
           etiqueta,
-          style: CLODTextStyles.bodyMedium.copyWith(color: CLODColors.carbon),
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.texto(context),
+          ),
         ),
         const SizedBox(height: 8),
         campo,
@@ -110,7 +112,6 @@ class _IdentificacionOficialScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -122,7 +123,7 @@ class _IdentificacionOficialScreenState
                 'Identificación oficial',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -130,7 +131,7 @@ class _IdentificacionOficialScreenState
                 'Sube ambos lados de tu INE',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
@@ -219,7 +220,9 @@ class _AreaCaptura extends StatelessWidget {
                       Text(
                         etiqueta,
                         style: CLODTextStyles.bodyMedium.copyWith(
-                          color: CLODColors.carbon.withValues(alpha: 0.6),
+                          color: CLODColors.texto(
+                            context,
+                          ).withValues(alpha: 0.6),
                         ),
                       ),
                     ],

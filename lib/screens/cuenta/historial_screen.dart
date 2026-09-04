@@ -99,7 +99,6 @@ class _HistorialScreenState extends State<HistorialScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -110,7 +109,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
               child: Text(
                 'Historial',
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
             ),
@@ -125,24 +124,22 @@ class _HistorialScreenState extends State<HistorialScreen> {
                       ),
                     )
                   : _errorMensaje != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: CLODErrorText(_errorMensaje!),
-                          ),
-                        )
-                      : _viajes.isEmpty
-                          ? const _EstadoVacio()
-                          : ListView.separated(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                              ),
-                              itemCount: _viajes.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (context, index) =>
-                                  _TarjetaViaje(viaje: _viajes[index]),
-                            ),
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: CLODErrorText(_errorMensaje!),
+                      ),
+                    )
+                  : _viajes.isEmpty
+                  ? const _EstadoVacio()
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      itemCount: _viajes.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 12),
+                      itemBuilder: (context, index) =>
+                          _TarjetaViaje(viaje: _viajes[index]),
+                    ),
             ),
           ],
         ),
@@ -165,14 +162,14 @@ class _EstadoVacio extends StatelessWidget {
             Icon(
               Icons.history,
               size: 48,
-              color: CLODColors.carbon.withValues(alpha: 0.3),
+              color: CLODColors.texto(context).withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
               'Aún no tienes viajes completados',
               textAlign: TextAlign.center,
               style: CLODTextStyles.bodyMedium.copyWith(
-                color: CLODColors.carbon.withValues(alpha: 0.6),
+                color: CLODColors.texto(context).withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -190,11 +187,7 @@ class _TarjetaViaje extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nombre =
-        _campoViaje(viaje, [
-          'pasajero_nombre',
-          'nombre_pasajero',
-          'nombre',
-        ]) ??
+        _campoViaje(viaje, ['pasajero_nombre', 'nombre_pasajero', 'nombre']) ??
         'Pasajero';
     final tarifa = _campoViaje(viaje, [
       'tarifa_ofrecida',
@@ -206,9 +199,9 @@ class _TarjetaViaje extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CLODColors.fondoTarjeta(context),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFD3D1C7)),
+        border: Border.all(color: CLODColors.borde(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +213,7 @@ class _TarjetaViaje extends StatelessWidget {
                 child: Text(
                   nombre,
                   style: CLODTextStyles.bodyLarge.copyWith(
-                    color: CLODColors.carbon,
+                    color: CLODColors.texto(context),
                   ),
                 ),
               ),
@@ -238,7 +231,7 @@ class _TarjetaViaje extends StatelessWidget {
           Text(
             fecha != null ? _formatearFecha(fecha) : '—',
             style: CLODTextStyles.bodySmall.copyWith(
-              color: CLODColors.carbon.withValues(alpha: 0.5),
+              color: CLODColors.texto(context).withValues(alpha: 0.5),
             ),
           ),
         ],

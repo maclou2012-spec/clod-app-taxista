@@ -49,7 +49,6 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
     final telefonoValido = _telefono.length == 10;
 
     return Scaffold(
-      backgroundColor: CLODColors.grisClaro,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -61,7 +60,7 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                 'Ingresa tu número de teléfono',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.carbon,
+                  color: CLODColors.texto(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -69,7 +68,7 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                 'Te enviaremos un código de verificación por SMS',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
-                  color: CLODColors.carbon.withValues(alpha: 0.6),
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 32),
@@ -81,16 +80,18 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                       vertical: 14,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: CLODColors.fondoTarjeta(context),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: CLODColors.carbon.withValues(alpha: 0.15),
+                        color: CLODColors.texto(
+                          context,
+                        ).withValues(alpha: 0.15),
                       ),
                     ),
                     child: Text(
                       '+52',
                       style: CLODTextStyles.bodyLarge.copyWith(
-                        color: CLODColors.carbon,
+                        color: CLODColors.texto(context),
                       ),
                     ),
                   ),
@@ -101,9 +102,7 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                       keyboardType: TextInputType.phone,
                       maxLength: 10,
                       hintText: '10 dígitos',
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                   ),
                 ],
@@ -124,7 +123,7 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                 children: [
                   Expanded(
                     child: Divider(
-                      color: CLODColors.carbon.withValues(alpha: 0.15),
+                      color: CLODColors.texto(context).withValues(alpha: 0.15),
                     ),
                   ),
                   Padding(
@@ -132,13 +131,13 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                     child: Text(
                       'o continúa con',
                       style: CLODTextStyles.bodySmall.copyWith(
-                        color: CLODColors.carbon.withValues(alpha: 0.5),
+                        color: CLODColors.texto(context).withValues(alpha: 0.5),
                       ),
                     ),
                   ),
                   Expanded(
                     child: Divider(
-                      color: CLODColors.carbon.withValues(alpha: 0.15),
+                      color: CLODColors.texto(context).withValues(alpha: 0.15),
                     ),
                   ),
                 ],
@@ -151,7 +150,7 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                     child: Text(
                       'G',
                       style: CLODTextStyles.bodyLarge.copyWith(
-                        color: CLODColors.carbon,
+                        color: CLODColors.texto(context),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -162,7 +161,7 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                   ),
                   const SizedBox(width: 20),
                   _SocialIconButton(
-                    child: Icon(Icons.apple, color: CLODColors.carbon),
+                    child: Icon(Icons.apple, color: CLODColors.texto(context)),
                   ),
                 ],
               ),
@@ -186,10 +185,10 @@ class _SocialIconButton extends StatelessWidget {
       width: 52,
       height: 52,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: CLODColors.fondoTarjeta(context),
         shape: BoxShape.circle,
         border: Border.all(
-          color: CLODColors.carbon.withValues(alpha: 0.15),
+          color: CLODColors.texto(context).withValues(alpha: 0.15),
         ),
       ),
       child: Center(child: child),

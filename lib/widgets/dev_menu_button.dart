@@ -51,7 +51,6 @@ class DevMenuButton extends StatelessWidget {
   void _abrirMenu(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: CLODColors.carbon,
       builder: (context) {
         return SafeArea(
           child: ListView(
