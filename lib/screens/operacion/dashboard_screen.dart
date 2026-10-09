@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
@@ -14,6 +16,9 @@ import '../../services/socket_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../utils/mapa_utils.dart';
 import '../../widgets/dev_menu_button.dart';
+import '../../widgets/neumorphic_button.dart';
+import '../../widgets/neumorphic_card.dart';
+import '../../widgets/neumorphic_toggle.dart';
 
 String? _campoSolicitud(Map<String, dynamic> solicitud, List<String> llaves) {
   for (final llave in llaves) {
@@ -395,6 +400,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // PILOTO "clay": ClayContainer no necesita un theme ambiente (a
+    // diferencia del intento anterior con flutter_neumorphic_plus) — cada
+    // widget resuelve su color directo desde CLODColors, así que ya no
+    // hace falta envolver la pantalla en nada especial.
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -403,7 +412,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // real (tab bar), a evaluar al cierre del Bloque 5.
         actions: [
           IconButton(
-            icon: const Icon(Icons.person_outline),
+            icon: const FaIcon(FontAwesomeIcons.circleUser),
             tooltip: 'Perfil',
             onPressed: () => context.push('/perfil'),
           ),
@@ -424,14 +433,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       SizedBox(
                         height: MediaQuery.of(context).size.height * 0.4,
-                        child: mapbox.MapWidget(
-                          viewport: mapbox.CameraViewportState(
-                            center: _puntoDesdePosicion(
-                              _locationService.posicionActual.value,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: mapbox.MapWidget(
+                                viewport: mapbox.CameraViewportState(
+                                  center: _puntoDesdePosicion(
+                                    _locationService.posicionActual.value,
+                                  ),
+                                  zoom: 15,
+                                ),
+                                onMapCreated: _onMapaCreado,
+                              ),
                             ),
-                            zoom: 15,
-                          ),
-                          onMapCreated: _onMapaCreado,
+                            Positioned(
+                              top: 12,
+                              left: 16,
+                              right: 16,
+                              child: _BarraSaludoVidrio(
+                                nombre: _nombre,
+                                fotoPerfilUrl: _fotoPerfilUrl,
+                                socketService: _socketService,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       Expanded(
@@ -440,47 +465,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 24,
-                                    backgroundColor: CLODColors.azulMarino,
-                                    backgroundImage:
-                                        _fotoPerfilUrl != null &&
-                                            _fotoPerfilUrl!.isNotEmpty
-                                        ? NetworkImage(_fotoPerfilUrl!)
-                                        : null,
-                                    child:
-                                        _fotoPerfilUrl != null &&
-                                            _fotoPerfilUrl!.isNotEmpty
-                                        ? null
-                                        : Icon(
-                                            Icons.person,
-                                            color: CLODColors.texto(context),
-                                          ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      'Hola, $_nombre',
-                                      style: CLODTextStyles.headingMedium,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              _IndicadorConexionSocket(
-                                socketService: _socketService,
-                              ),
-                              const SizedBox(height: 20),
-                              Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: CLODColors.azulMarino.withValues(
-                                    alpha: 0.2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                              NeumorphicCard(
                                 child: Column(
                                   children: [
                                     Row(
@@ -493,9 +478,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             style: CLODTextStyles.bodyLarge,
                                           ),
                                         ),
-                                        Switch(
+                                        NeumorphicToggle(
                                           value: _disponible,
-                                          activeThumbColor: CLODColors.azulCLOD,
                                           onChanged: _cargandoDisponibilidad
                                               ? null
                                               : _onToggleDisponibilidad,
@@ -539,23 +523,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ],
                               ),
                               const SizedBox(height: 20),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: () =>
-                                      context.push('/solicitudes-pendientes'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: CLODColors.azulCLOD,
-                                    side: const BorderSide(
-                                      color: CLODColors.azulCLOD,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                  ),
-                                  icon: const Icon(Icons.list_alt),
-                                  label: const Text('Ver solicitudes'),
-                                ),
+                              NeumorphicButton(
+                                label: 'Ver solicitudes',
+                                onPressed: () =>
+                                    context.push('/solicitudes-pendientes'),
                               ),
                               const SizedBox(height: 40),
                               Text(
@@ -576,6 +547,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const DevMenuButton(),
         ],
+      ),
+    );
+  }
+}
+
+class _BarraSaludoVidrio extends StatelessWidget {
+  const _BarraSaludoVidrio({
+    required this.nombre,
+    required this.fotoPerfilUrl,
+    required this.socketService,
+  });
+
+  final String nombre;
+  final String? fotoPerfilUrl;
+  final SocketService socketService;
+
+  @override
+  Widget build(BuildContext context) {
+    final tieneFoto = fotoPerfilUrl != null && fotoPerfilUrl!.isNotEmpty;
+    final oscuro = Theme.of(context).brightness == Brightness.dark;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: (oscuro ? CLODColors.carbon : Colors.white).withValues(
+              alpha: 0.55,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: oscuro ? 0.08 : 0.5),
+            ),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: CLODColors.azulMarino,
+                backgroundImage: tieneFoto
+                    ? NetworkImage(fotoPerfilUrl!)
+                    : null,
+                child: tieneFoto
+                    ? null
+                    : const FaIcon(
+                        FontAwesomeIcons.user,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Hola, $nombre',
+                      style: CLODTextStyles.bodyLarge.copyWith(
+                        color: CLODColors.texto(context),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    _IndicadorConexionSocket(socketService: socketService),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -635,12 +679,8 @@ class _TarjetaEstadistica extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return NeumorphicCard(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      decoration: BoxDecoration(
-        color: CLODColors.azulMarino.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Column(
         children: [
           Text(valor, style: CLODTextStyles.headingMedium),
@@ -699,12 +739,15 @@ class _TarjetaSolicitud extends StatelessWidget {
               style: CLODTextStyles.headingMedium,
             ),
             const SizedBox(height: 20),
-            _filaDato(Icons.person, nombrePasajero),
+            _filaDato(FontAwesomeIcons.user, nombrePasajero),
             const SizedBox(height: 12),
-            _filaDato(Icons.location_on, origen),
+            _filaDato(FontAwesomeIcons.locationDot, origen),
             if (tarifa != null) ...[
               const SizedBox(height: 12),
-              _filaDato(Icons.attach_money, '\$$tarifa MXN (referencia)'),
+              _filaDato(
+                FontAwesomeIcons.dollarSign,
+                '\$$tarifa MXN (referencia)',
+              ),
             ],
             const SizedBox(height: 28),
             Row(
@@ -742,10 +785,10 @@ class _TarjetaSolicitud extends StatelessWidget {
     );
   }
 
-  Widget _filaDato(IconData icono, String texto) {
+  Widget _filaDato(FaIconData icono, String texto) {
     return Row(
       children: [
-        Icon(icono, size: 20, color: CLODColors.azulCLOD),
+        FaIcon(icono, size: 20, color: CLODColors.azulCLOD),
         const SizedBox(width: 12),
         Expanded(child: Text(texto, style: CLODTextStyles.bodyLarge)),
       ],

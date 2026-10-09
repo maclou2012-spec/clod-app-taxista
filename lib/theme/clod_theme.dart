@@ -17,6 +17,13 @@ class CLODColors {
   static Color texto(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? grisClaro : carbon;
 
+  // El color EXACTO de fondo de pantalla (carbon/grisClaro, sin mezclar) —
+  // usado por los componentes "clay" para que su superficie sea idéntica
+  // al fondo que los rodea (monocromía estricta, ver neumorphic_button.dart
+  // y compañía).
+  static Color fondoPantalla(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? carbon : grisClaro;
+
   static Color fondoTarjeta(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
       ? azulMarino.withValues(alpha: 0.2)

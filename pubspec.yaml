@@ -51,6 +51,8 @@ dependencies:
   share_plus: ^13.3.0
   url_launcher: ^6.3.2
   flutter_stripe: ^11.5.0
+  clay_containers: ^0.3.4
+  font_awesome_flutter: ^11.0.0
 
 dev_dependencies:
   flutter_test:
