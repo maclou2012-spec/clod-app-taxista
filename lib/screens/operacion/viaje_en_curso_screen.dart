@@ -68,6 +68,39 @@ String _formatearMinSeg(int totalSegundos) {
   return '$minutos:${segundos.toString().padLeft(2, '0')}';
 }
 
+// Para leer el /detalle que llega del sondeo periódico — mismas llaves que
+// usa splash_screen.dart al reanudar desde el mismo endpoint.
+String? _campoTexto(Map<String, dynamic> mapa, List<String> llaves) {
+  for (final llave in llaves) {
+    final valor = mapa[llave];
+    if (valor != null) return valor.toString();
+  }
+  return null;
+}
+
+DateTime? _campoFecha(Map<String, dynamic> mapa, List<String> llaves) {
+  for (final llave in llaves) {
+    final valor = mapa[llave];
+    if (valor is String) {
+      final parseado = DateTime.tryParse(valor);
+      if (parseado != null) return parseado.toLocal();
+    }
+  }
+  return null;
+}
+
+// Un fin_rechazado_en solo cuenta como rechazo de la solicitud de
+// confirmación VIGENTE si es más reciente que su fin_solicitado_en — si no,
+// es el rastro de un rechazo anterior ya resuelto (ej. de un ciclo de
+// "pedir confirmación" previo) y no debe disparar la transición de nuevo.
+bool _rechazoVigente(Map<String, dynamic> detalle) {
+  final finRechazadoEn = _campoFecha(detalle, ['fin_rechazado_en']);
+  if (finRechazadoEn == null) return false;
+  final finSolicitadoEn = _campoFecha(detalle, ['fin_solicitado_en']);
+  if (finSolicitadoEn == null) return true;
+  return !finRechazadoEn.isBefore(finSolicitadoEn);
+}
+
 class ViajeEnCursoScreen extends StatefulWidget {
   const ViajeEnCursoScreen({super.key, required this.args});
 
@@ -77,7 +110,8 @@ class ViajeEnCursoScreen extends StatefulWidget {
   State<ViajeEnCursoScreen> createState() => _ViajeEnCursoScreenState();
 }
 
-class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
+class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
+    with WidgetsBindingObserver {
   final ApiService _apiService = ApiService();
   final SocketService _socketService = SocketService();
   final LocationTrackingService _locationService = LocationTrackingService();
@@ -119,6 +153,13 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
   StreamSubscription<Map<String, dynamic>>? _viajeCompletadoSub;
   StreamSubscription<Map<String, dynamic>>? _finViajeRechazadoSub;
 
+  // Respaldo sin socket: mientras el viaje está en_curso (y especialmente
+  // esperando confirmación), consultamos /detalle cada 10s por si el
+  // pasajero cerró el viaje o rechazó la confirmación y el evento de socket
+  // no llegó. Un solo vuelo a la vez, se detiene en segundo plano.
+  Timer? _detallePollTimer;
+  bool _consultandoDetalle = false;
+
   static final mapbox.Point _centroVeracruz = mapbox.Point(
     coordinates: mapbox.Position(-96.1342, 19.1738),
   );
@@ -126,6 +167,7 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _socketService.unirseSolicitud(widget.args.solicitudId);
     _locationService.posicionActual.addListener(_onPosicionActualizada);
     _viajeCompletadoSub = _socketService.viajeCompletado.listen(
@@ -141,18 +183,94 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
         _estado == _EstadoViajeTaxista.enCurso) {
       _iniciarReloj();
     }
+    if (_debeConsultarDetalle) _iniciarSondeoDetalle();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _locationService.posicionActual.removeListener(_onPosicionActualizada);
     _bloqueoTimer?.cancel();
     _relojTimer?.cancel();
     _confirmacionTimer?.cancel();
+    _detallePollTimer?.cancel();
     _viajeCompletadoSub?.cancel();
     _finViajeRechazadoSub?.cancel();
     _codigoController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (_debeConsultarDetalle) {
+        _consultarDetallePeriodico();
+        _iniciarSondeoDetalle();
+      }
+    } else if (state == AppLifecycleState.paused) {
+      _detallePollTimer?.cancel();
+    }
+  }
+
+  // --- Respaldo sin socket (/detalle) ---------------------------------------
+
+  bool get _debeConsultarDetalle =>
+      _estado == _EstadoViajeTaxista.enCurso ||
+      _estado == _EstadoViajeTaxista.esperandoConfirmacion;
+
+  void _iniciarSondeoDetalle() {
+    _detallePollTimer?.cancel();
+    _detallePollTimer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _consultarDetallePeriodico(),
+    );
+  }
+
+  Future<Map<String, dynamic>?> _consultarDetalleConGuard() async {
+    if (_consultandoDetalle) return null;
+    _consultandoDetalle = true;
+    try {
+      return await _apiService.obtenerDetalleSolicitud(
+        widget.args.solicitudId,
+      );
+    } catch (e) {
+      return null;
+    } finally {
+      _consultandoDetalle = false;
+    }
+  }
+
+  Future<void> _consultarDetallePeriodico() async {
+    if (!mounted || !_debeConsultarDetalle) return;
+    final detalle = await _consultarDetalleConGuard();
+    if (detalle == null || !mounted) return;
+
+    if (_campoTexto(detalle, ['estado']) == 'completado') {
+      _onViajeCompletado(detalle);
+      return;
+    }
+    if (_estado == _EstadoViajeTaxista.esperandoConfirmacion &&
+        _rechazoVigente(detalle)) {
+      _onFinViajeRechazado(detalle);
+    }
+  }
+
+  // Tras un 409 de "completar"/"finalizar sin confirmación", el estado del
+  // viaje ya cambió — lo más probable es que el pasajero lo haya cerrado él
+  // mismo (POST /finalizar-pasajero). Confirmamos con /detalle y seguimos a
+  // calificar en vez de mostrar un error que no refleja lo que pasó.
+  Future<void> _resincronizarTrasEstadoInvalido() async {
+    final detalle = await _consultarDetalleConGuard();
+    if (!mounted) return;
+    if (detalle != null && _campoTexto(detalle, ['estado']) == 'completado') {
+      _onViajeCompletado(detalle);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('El estado del viaje cambió. Intenta de nuevo.'),
+      ),
+    );
   }
 
   // --- Mapa (solo paso "aceptado") -----------------------------------------
@@ -290,6 +408,7 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
           _inicioViajeEn = DateTime.now();
         });
         _iniciarReloj();
+        _iniciarSondeoDetalle();
       case IniciarViajeResultado.codigoIncorrecto:
         _manejarCodigoIncorrecto(respuesta.intentosRestantes);
       case IniciarViajeResultado.bloqueado:
@@ -460,8 +579,9 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
         );
       case CompletarViajeResultado.ubicacionPocoPrecisa:
         await _mostrarHojaNoEnDestino(motivo: _MotivoHoja.pocoPrecisa);
-      case CompletarViajeResultado.sinCoordenadas:
       case CompletarViajeResultado.estadoInvalido:
+        await _resincronizarTrasEstadoInvalido();
+      case CompletarViajeResultado.sinCoordenadas:
       case CompletarViajeResultado.otroError:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -562,6 +682,11 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
     if (respuesta.resultado == CompletarViajeResultado.exito) {
       _confirmacionTimer?.cancel();
       _irACalificar(respuesta.data!);
+      return;
+    }
+    if (respuesta.resultado == CompletarViajeResultado.estadoInvalido) {
+      await _resincronizarTrasEstadoInvalido();
+      if (mounted) setState(() => _completando = false);
       return;
     }
     setState(() => _completando = false);
@@ -747,7 +872,7 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
                 const SizedBox(width: 8),
                 Text(
                   _estado == _EstadoViajeTaxista.llego
-                      ? 'Esperando desde $_textoCronometro'
+                      ? 'Esperando: $_textoCronometro min'
                       : 'Tiempo transcurrido: $_textoCronometro',
                   style: CLODTextStyles.bodyMedium.copyWith(
                     color: CLODColors.texto(context).withValues(alpha: 0.7),
