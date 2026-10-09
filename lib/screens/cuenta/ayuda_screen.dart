@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_app_bar.dart';
+import '../../widgets/clod_drawer.dart';
 
 class AyudaScreen extends StatelessWidget {
   const AyudaScreen({super.key});
@@ -65,20 +67,14 @@ class AyudaScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const ClodAppBar(titulo: 'Ayuda y soporte'),
+      drawer: const ClodDrawer(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 24),
-              Text(
-                'Ayuda y soporte',
-                style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.texto(context),
-                ),
-              ),
-              const SizedBox(height: 24),
               _FilaAyuda(
                 icono: Icons.help_outline,
                 titulo: 'Preguntas frecuentes',

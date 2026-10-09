@@ -68,6 +68,79 @@ int? _comoEntero(dynamic valor) {
   return null;
 }
 
+double? _comoDecimal(dynamic valor) {
+  if (valor is num) return valor.toDouble();
+  if (valor is String) return double.tryParse(valor);
+  return null;
+}
+
+enum CancelarViajeMotivo { pasajeroNoLlego, pasajeroNoResponde, otro }
+
+String _motivoCancelarComoTexto(CancelarViajeMotivo motivo) => switch (motivo) {
+  CancelarViajeMotivo.pasajeroNoLlego => 'pasajero_no_llego',
+  CancelarViajeMotivo.pasajeroNoResponde => 'pasajero_no_responde',
+  CancelarViajeMotivo.otro => 'otro',
+};
+
+enum CompletarViajeResultado {
+  exito,
+  fueraDeDestino,
+  ubicacionPocoPrecisa,
+  // 400: el llamador no mandó coordenadas (se usa también para "finalizar
+  // sin confirmación", que sí es un completar válido sin lat/lng — ese caso
+  // no debería caer aquí salvo que el backend lo rechace por otra razón).
+  sinCoordenadas,
+  estadoInvalido,
+  otroError,
+}
+
+// Resultado tipado de POST /solicitudes/:id/completar — nunca lanza. No
+// guarda ni expone más que lo que la UI necesita mostrar (distancia/radio),
+// nunca las coordenadas que se mandaron.
+class CompletarViajeRespuesta {
+  const CompletarViajeRespuesta._(
+    this.resultado, {
+    this.distanciaM,
+    this.radioM,
+    this.puedeConfirmacion,
+    this.data,
+  });
+
+  final CompletarViajeResultado resultado;
+  final double? distanciaM;
+  final double? radioM;
+  final bool? puedeConfirmacion;
+  final Map<String, dynamic>? data;
+
+  factory CompletarViajeRespuesta.exito(Map<String, dynamic> data) =>
+      CompletarViajeRespuesta._(CompletarViajeResultado.exito, data: data);
+
+  factory CompletarViajeRespuesta.fueraDeDestino({
+    double? distanciaM,
+    double? radioM,
+    bool? puedeConfirmacion,
+  }) => CompletarViajeRespuesta._(
+    CompletarViajeResultado.fueraDeDestino,
+    distanciaM: distanciaM,
+    radioM: radioM,
+    puedeConfirmacion: puedeConfirmacion,
+  );
+
+  factory CompletarViajeRespuesta.ubicacionPocoPrecisa() =>
+      const CompletarViajeRespuesta._(
+        CompletarViajeResultado.ubicacionPocoPrecisa,
+      );
+
+  factory CompletarViajeRespuesta.sinCoordenadas() =>
+      const CompletarViajeRespuesta._(CompletarViajeResultado.sinCoordenadas);
+
+  factory CompletarViajeRespuesta.estadoInvalido() =>
+      const CompletarViajeRespuesta._(CompletarViajeResultado.estadoInvalido);
+
+  factory CompletarViajeRespuesta.otroError() =>
+      const CompletarViajeRespuesta._(CompletarViajeResultado.otroError);
+}
+
 class ApiService {
   ApiService({Dio? dio, SecureStorageService? secureStorageService})
     : _secureStorageService = secureStorageService ?? SecureStorageService(),
@@ -494,20 +567,27 @@ class ApiService {
     await _dio.post('/api/solicitudes/$solicitudId/llegada');
   }
 
-  // No imprime ni guarda el código en ningún lado. Usa un Dio aparte, sin
-  // el LogInterceptor de depuración que el constructor le agrega a _dio
-  // (requestBody: true imprimiría el código tal cual) — mismo patrón de
-  // "dio limpio" que ya usa _refrescarToken para otra llamada sensible.
+  // Dio aparte, sin el LogInterceptor de depuración que el constructor le
+  // agrega a _dio (requestBody: true imprimiría datos sensibles tal cual) —
+  // usado por cualquier llamada cuyo cuerpo no deba aparecer en el log
+  // (código de seguridad, coordenadas de ubicación).
+  Future<Dio> _dioSinLog() async {
+    final accessToken = await _secureStorageService.obtenerAccessToken();
+    final dio = Dio(BaseOptions(baseUrl: baseUrl));
+    if (accessToken != null) {
+      dio.options.headers['Authorization'] = 'Bearer $accessToken';
+    }
+    return dio;
+  }
+
+  // No imprime ni guarda el código en ningún lado — mismo patrón de "dio
+  // limpio" que ya usa _refrescarToken para otra llamada sensible.
   Future<IniciarViajeRespuesta> iniciarViaje(
     int solicitudId,
     String codigo,
   ) async {
     try {
-      final accessToken = await _secureStorageService.obtenerAccessToken();
-      final dioSinLog = Dio(BaseOptions(baseUrl: baseUrl));
-      if (accessToken != null) {
-        dioSinLog.options.headers['Authorization'] = 'Bearer $accessToken';
-      }
+      final dioSinLog = await _dioSinLog();
       await dioSinLog.post(
         '/api/solicitudes/$solicitudId/iniciar',
         data: {'codigo': codigo},
@@ -543,9 +623,81 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> completarViaje(int solicitudId) async {
-    final response = await _dio.post('/api/solicitudes/$solicitudId/completar');
-    return response.data as Map<String, dynamic>;
+  // No guarda ni imprime lat/lng — Dio aparte, sin el LogInterceptor de
+  // depuración (mismo motivo que iniciarViaje). lat/lng/accuracy nulos
+  // (desde "Finalizar sin confirmación") simplemente no se mandan.
+  Future<CompletarViajeRespuesta> completarViaje(
+    int solicitudId, {
+    double? lat,
+    double? lng,
+    double? accuracy,
+  }) async {
+    try {
+      final dioSinLog = await _dioSinLog();
+      final response = await dioSinLog.post(
+        '/api/solicitudes/$solicitudId/completar',
+        data: {'lat': ?lat, 'lng': ?lng, 'accuracy': ?accuracy},
+      );
+      return CompletarViajeRespuesta.exito(
+        response.data as Map<String, dynamic>,
+      );
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final codigoError = data is Map<String, dynamic>
+          ? data['codigo'] as String?
+          : null;
+      final statusCode = e.response?.statusCode;
+
+      if (statusCode == 422 && codigoError == 'FUERA_DE_DESTINO') {
+        final mapa = data is Map<String, dynamic> ? data : null;
+        return CompletarViajeRespuesta.fueraDeDestino(
+          distanciaM: _comoDecimal(mapa?['distancia_m']),
+          radioM: _comoDecimal(mapa?['radio_m']),
+          puedeConfirmacion: mapa?['puede_pedir_confirmacion'] == true,
+        );
+      }
+      if (statusCode == 422 && codigoError == 'UBICACION_POCO_PRECISA') {
+        return CompletarViajeRespuesta.ubicacionPocoPrecisa();
+      }
+      if (statusCode == 400) return CompletarViajeRespuesta.sinCoordenadas();
+      if (statusCode == 409) return CompletarViajeRespuesta.estadoInvalido();
+      return CompletarViajeRespuesta.otroError();
+    } catch (e) {
+      return CompletarViajeRespuesta.otroError();
+    }
+  }
+
+  Future<void> cancelarSolicitudTaxista(
+    int solicitudId,
+    CancelarViajeMotivo motivo,
+  ) async {
+    await _dio.post(
+      '/api/solicitudes/$solicitudId/cancelar',
+      data: {'motivo': _motivoCancelarComoTexto(motivo)},
+    );
+  }
+
+  Future<void> solicitarFinViaje(int solicitudId) async {
+    await _dio.post('/api/solicitudes/$solicitudId/solicitar-fin');
+  }
+
+  // Usado tanto para refrescar el estado en vivo (llegada_en,
+  // fin_solicitado_en, segundos_restantes_confirmacion...) como para la
+  // reanudación al reabrir la app.
+  Future<Map<String, dynamic>?> obtenerDetalleSolicitud(
+    int solicitudId,
+  ) async {
+    try {
+      final response = await _dio.get('/api/solicitudes/$solicitudId/detalle');
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return (data['solicitud'] as Map<String, dynamic>?) ?? data;
+      }
+      return null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
   }
 
   Future<void> calificarViaje(

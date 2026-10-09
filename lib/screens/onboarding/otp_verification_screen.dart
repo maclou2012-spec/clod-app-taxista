@@ -113,10 +113,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   shape: MaterialPinShape.outlined,
                   cellSize: const Size(46, 56),
                   spacing: 6,
-                  fillColor: Colors.white,
-                  focusedFillColor: Colors.white,
-                  filledFillColor: Colors.white,
-                  completeFillColor: Colors.white,
+                  // Antes era Colors.white fijo — en oscuro, el texto
+                  // (CLODColors.texto, casi blanco ahí) quedaba casi
+                  // invisible sobre ese fondo blanco. fondoTarjeta responde
+                  // al tema.
+                  fillColor: CLODColors.fondoTarjeta(context),
+                  focusedFillColor: CLODColors.fondoTarjeta(context),
+                  filledFillColor: CLODColors.fondoTarjeta(context),
+                  completeFillColor: CLODColors.fondoTarjeta(context),
                   borderColor: CLODColors.texto(
                     context,
                   ).withValues(alpha: 0.15),

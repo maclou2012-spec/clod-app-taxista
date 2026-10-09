@@ -9,6 +9,11 @@ import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
 import '../../widgets/clod_text_field.dart';
 
+// Login social (Google/Facebook/Apple) aún no está conectado a un backend
+// real — se oculta detrás de esta bandera en vez de borrar el código, para
+// activarlo con un solo cambio cuando esté listo.
+const bool kSocialLoginHabilitado = false;
+
 class PhoneEntryScreen extends StatefulWidget {
   const PhoneEntryScreen({super.key});
 
@@ -118,53 +123,67 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                 habilitado: telefonoValido,
                 onPressed: () => _onEnviarCodigo(authProvider),
               ),
-              const SizedBox(height: 32),
-              Row(
-                children: [
-                  Expanded(
-                    child: Divider(
-                      color: CLODColors.texto(context).withValues(alpha: 0.15),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'o continúa con',
-                      style: CLODTextStyles.bodySmall.copyWith(
-                        color: CLODColors.texto(context).withValues(alpha: 0.5),
+              if (kSocialLoginHabilitado) ...[
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: CLODColors.texto(
+                          context,
+                        ).withValues(alpha: 0.15),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Divider(
-                      color: CLODColors.texto(context).withValues(alpha: 0.15),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'o continúa con',
+                        style: CLODTextStyles.bodySmall.copyWith(
+                          color: CLODColors.texto(
+                            context,
+                          ).withValues(alpha: 0.5),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _SocialIconButton(
-                    child: Text(
-                      'G',
-                      style: CLODTextStyles.bodyLarge.copyWith(
+                    Expanded(
+                      child: Divider(
+                        color: CLODColors.texto(
+                          context,
+                        ).withValues(alpha: 0.15),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _SocialIconButton(
+                      child: Text(
+                        'G',
+                        style: CLODTextStyles.bodyLarge.copyWith(
+                          color: CLODColors.texto(context),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    _SocialIconButton(
+                      child: Icon(
+                        Icons.facebook,
+                        color: CLODColors.azulMarino,
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    _SocialIconButton(
+                      child: Icon(
+                        Icons.apple,
                         color: CLODColors.texto(context),
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 20),
-                  _SocialIconButton(
-                    child: Icon(Icons.facebook, color: CLODColors.azulMarino),
-                  ),
-                  const SizedBox(width: 20),
-                  _SocialIconButton(
-                    child: Icon(Icons.apple, color: CLODColors.texto(context)),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 32),
             ],
           ),

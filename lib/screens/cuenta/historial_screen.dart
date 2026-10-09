@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_app_bar.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_error_text.dart';
 
 String? _campoViaje(Map<String, dynamic> viaje, List<String> llaves) {
@@ -99,6 +101,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const ClodAppBar(titulo: 'Historial de viajes'),
+      drawer: const ClodDrawer(),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

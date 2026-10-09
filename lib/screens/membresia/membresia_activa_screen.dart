@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_app_bar.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
 
@@ -102,6 +104,8 @@ class _MembresiaActivaScreenState extends State<MembresiaActivaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const ClodAppBar(titulo: 'Mi membresía'),
+      drawer: const ClodDrawer(),
       body: SafeArea(
         child: _cargando
             ? Center(

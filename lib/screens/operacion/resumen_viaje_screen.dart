@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/viaje_en_curso_args.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_app_bar.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_primary_button.dart';
 
 class ResumenViajeScreen extends StatelessWidget {
@@ -43,13 +45,15 @@ class ResumenViajeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const ClodAppBar(titulo: 'Resumen del viaje'),
+      drawer: const ClodDrawer(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 64),
+              const SizedBox(height: 24),
               Center(
                 child: Container(
                   width: 72,

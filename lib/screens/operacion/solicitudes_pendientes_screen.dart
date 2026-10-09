@@ -10,6 +10,7 @@ import '../../services/api_service.dart';
 import '../../services/location_tracking_service.dart';
 import '../../services/socket_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_drawer.dart';
 
 dynamic _campo(Map<String, dynamic> mapa, List<String> llaves) {
   for (final llave in llaves) {
@@ -223,6 +224,7 @@ class _SolicitudesPendientesScreenState
           style: CLODTextStyles.headingSmall,
         ),
       ),
+      drawer: const ClodDrawer(),
       body: SafeArea(child: _cuerpo()),
     );
   }

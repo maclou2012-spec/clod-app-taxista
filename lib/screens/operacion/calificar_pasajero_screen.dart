@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../models/calificar_pasajero_args.dart';
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_app_bar.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_primary_button.dart';
 import '../../widgets/clod_text_field.dart';
 
@@ -66,13 +68,15 @@ class _CalificarPasajeroScreenState extends State<CalificarPasajeroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const ClodAppBar(titulo: 'Calificar pasajero'),
+      drawer: const ClodDrawer(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 48),
+              const SizedBox(height: 24),
               Text(
                 '¿Cómo estuvo tu pasajero?',
                 textAlign: TextAlign.center,

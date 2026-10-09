@@ -38,6 +38,12 @@ double? _campoDecimal(Map<String, dynamic> mapa, List<String> llaves) {
   return null;
 }
 
+DateTime? _campoFecha(Map<String, dynamic> mapa, List<String> llaves) {
+  final valor = _campo(mapa, llaves);
+  if (valor is String) return DateTime.tryParse(valor)?.toLocal();
+  return null;
+}
+
 // Las coordenadas pueden venir anidadas (viaje['origen'] = {lat,lng}) o
 // planas (viaje['origen_lat'], viaje['origen_lng']).
 (double?, double?) _coordenadas(Map<String, dynamic> viaje, String prefijo) {
@@ -126,6 +132,24 @@ class _SplashScreenState extends State<SplashScreen> {
       final (origenLat, origenLng) = _coordenadas(viaje, 'origen');
       final (destinoLat, destinoLng) = _coordenadas(viaje, 'destino');
 
+      // /detalle trae llegada_en/fin_solicitado_en/fin_rechazado_en/
+      // segundos_restantes_confirmacion — necesarios para reanudar en el
+      // paso correcto (incluido "esperando confirmación"). Si el endpoint
+      // todavía no está desplegado o falla, seguimos con lo que ya trae
+      // mi-viaje-activo: la reanudación sigue funcionando, solo sin esos
+      // datos extra (el cronómetro arranca desde ahora en vez de desde la
+      // llegada real).
+      Map<String, dynamic> detalle = viaje;
+      try {
+        final detalleRemoto = await _apiService.obtenerDetalleSolicitud(
+          solicitudId,
+        );
+        if (detalleRemoto != null) detalle = detalleRemoto;
+      } catch (e) {
+        // Se queda con los datos de mi-viaje-activo.
+      }
+      if (!mounted) return false;
+
       final args = ViajeEnCursoArgs(
         solicitudId: solicitudId,
         pasajeroNombre:
@@ -156,6 +180,12 @@ class _SplashScreenState extends State<SplashScreen> {
         destinoLat: destinoLat,
         destinoLng: destinoLng,
         estado: estado ?? 'aceptado',
+        llegadaEn: _campoFecha(detalle, ['llegada_en']),
+        finSolicitadoEn: _campoFecha(detalle, ['fin_solicitado_en']),
+        finRechazadoEn: _campoFecha(detalle, ['fin_rechazado_en']),
+        segundosRestantesConfirmacion: _campoEntero(detalle, [
+          'segundos_restantes_confirmacion',
+        ]),
       );
       context.go('/viaje-en-curso', extra: args);
       return true;

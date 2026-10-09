@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
@@ -15,9 +17,16 @@ import '../../services/location_tracking_service.dart';
 import '../../services/socket_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../utils/mapa_utils.dart';
+import '../../widgets/boton_flotante_vidrio.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_primary_button.dart';
 
-enum _EstadoViajeTaxista { enCamino, llego, enCurso }
+enum _EstadoViajeTaxista { enCamino, llego, enCurso, esperandoConfirmacion }
+
+// El permiso de ubicación se negó (o quedó denegado para siempre) — se
+// distingue de un timeout/otra falla para poder explicarle al taxista cómo
+// activarlo, en vez de un mensaje genérico.
+class _PermisoUbicacionDenegado implements Exception {}
 
 // La respuesta de completar puede traer el id del viaje anidado bajo
 // 'viaje' o plano — si no viene ninguno, usamos el id de la solicitud como
@@ -32,8 +41,18 @@ int _extraerViajeId(Map<String, dynamic> data, int solicitudIdFallback) {
   return solicitudIdFallback;
 }
 
-_EstadoViajeTaxista _estadoInicialDesde(String estado) {
-  switch (estado) {
+// "Esperando confirmación" no es un valor de estado aparte en el backend:
+// es en_curso con un solicitar-fin pendiente (finSolicitadoEn más reciente
+// que cualquier finRechazadoEn). Se deriva aquí para que tanto una solicitud
+// recién aceptada como una reanudada desde /detalle usen la misma regla.
+_EstadoViajeTaxista _estadoInicialDesde(ViajeEnCursoArgs args) {
+  if (args.estado == 'en_curso' &&
+      args.finSolicitadoEn != null &&
+      (args.finRechazadoEn == null ||
+          args.finRechazadoEn!.isBefore(args.finSolicitadoEn!))) {
+    return _EstadoViajeTaxista.esperandoConfirmacion;
+  }
+  switch (args.estado) {
     case 'en_espera':
       return _EstadoViajeTaxista.llego;
     case 'en_curso':
@@ -41,6 +60,12 @@ _EstadoViajeTaxista _estadoInicialDesde(String estado) {
     default:
       return _EstadoViajeTaxista.enCamino;
   }
+}
+
+String _formatearMinSeg(int totalSegundos) {
+  final minutos = totalSegundos ~/ 60;
+  final segundos = totalSegundos % 60;
+  return '$minutos:${segundos.toString().padLeft(2, '0')}';
 }
 
 class ViajeEnCursoScreen extends StatefulWidget {
@@ -56,18 +81,28 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
   final ApiService _apiService = ApiService();
   final SocketService _socketService = SocketService();
   final LocationTrackingService _locationService = LocationTrackingService();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // Solo se usa en el paso "aceptado" — en los demás pasos no se monta
+  // ningún MapWidget, así que estas referencias se quedan en null.
   mapbox.MapboxMap? _mapboxMap;
   mapbox.PointAnnotationManager? _pointAnnotationManager;
   mapbox.PointAnnotation? _miUbicacionAnnotation;
   Uint8List? _iconoUbicacion;
 
-  late _EstadoViajeTaxista _estado = _estadoInicialDesde(widget.args.estado);
+  late _EstadoViajeTaxista _estado = _estadoInicialDesde(widget.args);
   bool _marcandoLlegada = false;
   bool _completando = false;
+  bool _cancelando = false;
 
-  // Código de seguridad (paso "en_espera") — el controller también maneja
-  // el estado de error y la sacudida (triggerError/clearError, ver
+  // Cronómetro compartido por "llego" (esperando desde) y "enCurso" (tiempo
+  // transcurrido) — solo cambia de qué DateTime calcula la diferencia.
+  Timer? _relojTimer;
+  late DateTime? _llegadaEn = widget.args.llegadaEn;
+  DateTime? _inicioViajeEn;
+
+  // Código de seguridad (paso "llego") — el controller también maneja el
+  // estado de error y la sacudida (triggerError/clearError, ver
   // package:pin_code_fields), así que no hace falta un AnimationController
   // propio para la sacudida.
   final PinInputController _codigoController = PinInputController();
@@ -75,6 +110,14 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
   String? _mensajeErrorCodigo;
   int? _segundosBloqueoRestantes;
   Timer? _bloqueoTimer;
+
+  // "Esperando confirmación del pasajero" (dentro de enCurso)
+  Timer? _confirmacionTimer;
+  late int? _segundosRestantesConfirmacion =
+      widget.args.segundosRestantesConfirmacion;
+  DateTime? _ultimoRechazoEn;
+  StreamSubscription<Map<String, dynamic>>? _viajeCompletadoSub;
+  StreamSubscription<Map<String, dynamic>>? _finViajeRechazadoSub;
 
   static final mapbox.Point _centroVeracruz = mapbox.Point(
     coordinates: mapbox.Position(-96.1342, 19.1738),
@@ -85,15 +128,34 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
     super.initState();
     _socketService.unirseSolicitud(widget.args.solicitudId);
     _locationService.posicionActual.addListener(_onPosicionActualizada);
+    _viajeCompletadoSub = _socketService.viajeCompletado.listen(
+      _onViajeCompletado,
+    );
+    _finViajeRechazadoSub = _socketService.finViajeRechazado.listen(
+      _onFinViajeRechazado,
+    );
+    if (_estado == _EstadoViajeTaxista.esperandoConfirmacion) {
+      _iniciarCuentaRegresivaConfirmacion();
+    }
+    if (_estado == _EstadoViajeTaxista.llego ||
+        _estado == _EstadoViajeTaxista.enCurso) {
+      _iniciarReloj();
+    }
   }
 
   @override
   void dispose() {
     _locationService.posicionActual.removeListener(_onPosicionActualizada);
     _bloqueoTimer?.cancel();
+    _relojTimer?.cancel();
+    _confirmacionTimer?.cancel();
+    _viajeCompletadoSub?.cancel();
+    _finViajeRechazadoSub?.cancel();
     _codigoController.dispose();
     super.dispose();
   }
+
+  // --- Mapa (solo paso "aceptado") -----------------------------------------
 
   mapbox.Point _puntoDesdePosicion(Position? posicion) {
     if (posicion == null) return _centroVeracruz;
@@ -103,6 +165,11 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
   }
 
   void _onPosicionActualizada() {
+    // El envío de ubicación en vivo (LocationTrackingService, usado por el
+    // seguimiento del pasajero) sigue funcionando sin importar el paso —
+    // esto solo redibuja el pin en EL MAPA de este widget, que ya no existe
+    // fuera de "aceptado".
+    if (_estado != _EstadoViajeTaxista.enCamino) return;
     final posicion = _locationService.posicionActual.value;
     if (posicion != null) {
       _sincronizarMapa(posicion);
@@ -143,12 +210,45 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
     }
   }
 
+  // --- Cronómetro -----------------------------------------------------------
+
+  void _iniciarReloj() {
+    _relojTimer?.cancel();
+    _relojTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
+  String get _textoCronometro {
+    final DateTime? desde = _estado == _EstadoViajeTaxista.llego
+        ? _llegadaEn
+        : _inicioViajeEn;
+    if (desde == null) return '';
+    final segundos = DateTime.now().difference(desde).inSeconds;
+    return _formatearMinSeg(segundos < 0 ? 0 : segundos);
+  }
+
+  // --- He llegado -------------------------------------------------------
+
   Future<void> _marcarLlegada() async {
     setState(() => _marcandoLlegada = true);
 
     try {
       await _apiService.marcarLlegada(widget.args.solicitudId);
-      if (mounted) setState(() => _estado = _EstadoViajeTaxista.llego);
+      if (mounted) {
+        // El mapa de "aceptado" se destruye al salir del árbol (deja de
+        // construirse en build()) — se limpian las referencias para no
+        // quedarnos con un MapboxMap/manager de un widget ya desmontado.
+        _mapboxMap = null;
+        _pointAnnotationManager = null;
+        _miUbicacionAnnotation = null;
+        setState(() {
+          _estado = _EstadoViajeTaxista.llego;
+          _llegadaEn = DateTime.now();
+        });
+        _iniciarReloj();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -161,6 +261,8 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
       if (mounted) setState(() => _marcandoLlegada = false);
     }
   }
+
+  // --- Código de seguridad / iniciar viaje ----------------------------------
 
   Future<void> _intentarIniciarViaje() async {
     final codigo = _codigoController.text;
@@ -183,7 +285,11 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
 
     switch (respuesta.resultado) {
       case IniciarViajeResultado.exito:
-        setState(() => _estado = _EstadoViajeTaxista.enCurso);
+        setState(() {
+          _estado = _EstadoViajeTaxista.enCurso;
+          _inicioViajeEn = DateTime.now();
+        });
+        _iniciarReloj();
       case IniciarViajeResultado.codigoIncorrecto:
         _manejarCodigoIncorrecto(respuesta.intentosRestantes);
       case IniciarViajeResultado.bloqueado:
@@ -211,11 +317,6 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
                 '${intentosRestantes == 1 ? "intento" : "intentos"}'
           : 'Código incorrecto. Intenta de nuevo.';
     });
-    // triggerError() dispara la sacudida breve del propio paquete; se limpia
-    // solo el texto (no el error, que setText no toca) para que el mensaje
-    // siga visible hasta que el taxista escriba el siguiente dígito —
-    // clearErrorOnInput (activado por defecto en MaterialPinField) lo oculta
-    // automáticamente en ese momento.
     _codigoController.triggerError();
     _codigoController.text = '';
     _codigoController.requestFocus();
@@ -246,89 +347,267 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
     });
   }
 
-  Future<void> _completarViaje() async {
-    setState(() => _completando = true);
+  // --- Cancelar (el pasajero no llegó) --------------------------------------
 
+  Future<void> _mostrarDialogoCancelar() async {
+    final motivo = await showDialog<CancelarViajeMotivo>(
+      context: context,
+      builder: (dialogContext) => const _DialogoCancelarViaje(),
+    );
+    if (motivo != null && mounted) await _cancelarSolicitud(motivo);
+  }
+
+  Future<void> _cancelarSolicitud(CancelarViajeMotivo motivo) async {
+    setState(() => _cancelando = true);
     try {
-      final respuesta = await _apiService.completarViaje(
+      await _apiService.cancelarSolicitudTaxista(
         widget.args.solicitudId,
+        motivo,
       );
       _socketService.salirSolicitud(widget.args.solicitudId);
       _socketService.marcarSolicitudActiva(null);
+      if (mounted) context.go('/dashboard');
+    } on DioException catch (e) {
       if (mounted) {
-        final viajeId = _extraerViajeId(respuesta, widget.args.solicitudId);
-        context.go(
-          '/calificar-pasajero',
-          extra: CalificarPasajeroArgs(
-            viajeId: viajeId,
-            viajeArgs: widget.args,
-          ),
-        );
+        final mensaje = e.response?.statusCode == 409
+            ? 'Ya no se puede cancelar — el estado del viaje cambió.'
+            : 'No se pudo cancelar. Intenta de nuevo.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(mensaje)));
       }
     } catch (e) {
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo cancelar. Intenta de nuevo.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _cancelando = false);
+    }
+  }
+
+  // --- Completar viaje -------------------------------------------------
+
+  Future<Position> _leerUbicacionActual() async {
+    final servicioHabilitado = await Geolocator.isLocationServiceEnabled();
+    if (!servicioHabilitado) throw _PermisoUbicacionDenegado();
+
+    var permiso = await Geolocator.checkPermission();
+    if (permiso == LocationPermission.denied) {
+      permiso = await Geolocator.requestPermission();
+    }
+    if (permiso == LocationPermission.denied ||
+        permiso == LocationPermission.deniedForever) {
+      throw _PermisoUbicacionDenegado();
+    }
+
+    return Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+      ),
+    );
+  }
+
+  Future<void> _tocarCompletarViaje() async {
+    if (_completando) return;
+    setState(() => _completando = true);
+
+    Position? posicion;
+    var permisoDenegado = false;
+    try {
+      posicion = await _leerUbicacionActual();
+    } on _PermisoUbicacionDenegado {
+      permisoDenegado = true;
+    } catch (e) {
+      // Timeout u otra falla de lectura — se trata igual que "no se pudo
+      // verificar", con la alternativa de pedir confirmación al pasajero.
+    }
+
+    if (!mounted) return;
+
+    if (posicion == null) {
+      setState(() => _completando = false);
+      await _mostrarHojaNoEnDestino(
+        motivo: permisoDenegado
+            ? _MotivoHoja.permisoDenegado
+            : _MotivoHoja.fallaUbicacion,
+      );
+      return;
+    }
+
+    // No se guarda ni se imprime la posición — solo se manda a
+    // ApiService.completarViaje, que a su vez usa un Dio sin log.
+    final respuesta = await _apiService.completarViaje(
+      widget.args.solicitudId,
+      lat: posicion.latitude,
+      lng: posicion.longitude,
+      accuracy: posicion.accuracy,
+    );
+    if (!mounted) return;
+    setState(() => _completando = false);
+
+    switch (respuesta.resultado) {
+      case CompletarViajeResultado.exito:
+        _irACalificar(respuesta.data!);
+      case CompletarViajeResultado.fueraDeDestino:
+        await _mostrarHojaNoEnDestino(
+          motivo: _MotivoHoja.fueraDeDestino,
+          distanciaM: respuesta.distanciaM,
+          radioM: respuesta.radioM,
+          puedeConfirmacionBackend: respuesta.puedeConfirmacion ?? true,
+        );
+      case CompletarViajeResultado.ubicacionPocoPrecisa:
+        await _mostrarHojaNoEnDestino(motivo: _MotivoHoja.pocoPrecisa);
+      case CompletarViajeResultado.sinCoordenadas:
+      case CompletarViajeResultado.estadoInvalido:
+      case CompletarViajeResultado.otroError:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('No se pudo completar el viaje. Intenta de nuevo.'),
           ),
         );
+    }
+  }
+
+  Future<void> _mostrarHojaNoEnDestino({
+    required _MotivoHoja motivo,
+    double? distanciaM,
+    double? radioM,
+    bool puedeConfirmacionBackend = true,
+  }) async {
+    final puedeConfirmacion = puedeConfirmacionBackend && _puedeVolverAPedirConfirmacion;
+    final segundosParaReintentar = _puedeVolverAPedirConfirmacion
+        ? null
+        : 60 - DateTime.now().difference(_ultimoRechazoEn!).inSeconds;
+
+    final accion = await showModalBottomSheet<_AccionHoja>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => _HojaNoEnDestino(
+        motivo: motivo,
+        distanciaM: distanciaM,
+        radioM: radioM,
+        puedeConfirmacion: puedeConfirmacion,
+        segundosParaReintentar: segundosParaReintentar != null && segundosParaReintentar > 0
+            ? segundosParaReintentar
+            : null,
+      ),
+    );
+    if (!mounted || accion != _AccionHoja.pedirConfirmacion) return;
+    await _solicitarConfirmacion();
+  }
+
+  bool get _puedeVolverAPedirConfirmacion {
+    final ultimo = _ultimoRechazoEn;
+    if (ultimo == null) return true;
+    return DateTime.now().difference(ultimo) >= const Duration(seconds: 60);
+  }
+
+  Future<void> _solicitarConfirmacion() async {
+    setState(() => _completando = true);
+    try {
+      await _apiService.solicitarFinViaje(widget.args.solicitudId);
+      if (!mounted) return;
+      setState(() {
+        _estado = _EstadoViajeTaxista.esperandoConfirmacion;
+        _segundosRestantesConfirmacion = 300;
+      });
+      _iniciarCuentaRegresivaConfirmacion();
+    } on DioException catch (e) {
+      if (mounted) {
+        final mensaje = e.response?.statusCode == 409
+            ? 'Ya no se puede pedir confirmación ahora mismo.'
+            : 'No se pudo enviar la solicitud. Intenta de nuevo.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(mensaje)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo enviar la solicitud. Intenta de nuevo.'),
+          ),
+        );
       }
     } finally {
-      if (mounted) {
-        setState(() => _completando = false);
+      if (mounted) setState(() => _completando = false);
+    }
+  }
+
+  void _iniciarCuentaRegresivaConfirmacion() {
+    _confirmacionTimer?.cancel();
+    _confirmacionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
       }
-    }
+      final restante = (_segundosRestantesConfirmacion ?? 1) - 1;
+      if (restante <= 0) {
+        timer.cancel();
+        setState(() => _segundosRestantesConfirmacion = 0);
+      } else {
+        setState(() => _segundosRestantesConfirmacion = restante);
+      }
+    });
   }
 
-  String get _subtituloEstado {
-    switch (_estado) {
-      case _EstadoViajeTaxista.enCamino:
-        return 'Yendo al punto de encuentro';
-      case _EstadoViajeTaxista.llego:
-        return 'Esperando al pasajero';
-      case _EstadoViajeTaxista.enCurso:
-        return 'Viaje en curso';
+  Future<void> _finalizarSinConfirmacion() async {
+    if (_completando) return;
+    setState(() => _completando = true);
+    final respuesta = await _apiService.completarViaje(widget.args.solicitudId);
+    if (!mounted) return;
+    if (respuesta.resultado == CompletarViajeResultado.exito) {
+      _confirmacionTimer?.cancel();
+      _irACalificar(respuesta.data!);
+      return;
     }
+    setState(() => _completando = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No se pudo finalizar el viaje. Intenta de nuevo.'),
+      ),
+    );
   }
 
-  String get _textoBotonEstado {
-    switch (_estado) {
-      case _EstadoViajeTaxista.enCamino:
-        return 'He llegado';
-      case _EstadoViajeTaxista.llego:
-        return 'Iniciar viaje';
-      case _EstadoViajeTaxista.enCurso:
-        return 'Completar viaje';
-    }
+  void _onViajeCompletado(Map<String, dynamic> data) {
+    if (!mounted) return;
+    _confirmacionTimer?.cancel();
+    _socketService.salirSolicitud(widget.args.solicitudId);
+    _socketService.marcarSolicitudActiva(null);
+    _irACalificar(data);
   }
 
-  // _accionEnProgreso/_accionEstado solo se usan para enCamino/enCurso — el
-  // paso "llego" ya no pasa por el botón genérico (build() lo reemplaza por
-  // _SeccionCodigoSeguridad), así que su rama aquí nunca se renderiza.
-  bool get _accionEnProgreso {
-    switch (_estado) {
-      case _EstadoViajeTaxista.enCamino:
-        return _marcandoLlegada;
-      case _EstadoViajeTaxista.llego:
-        return _enviandoCodigo;
-      case _EstadoViajeTaxista.enCurso:
-        return _completando;
-    }
+  void _onFinViajeRechazado(Map<String, dynamic> data) {
+    if (!mounted) return;
+    _confirmacionTimer?.cancel();
+    setState(() {
+      _estado = _EstadoViajeTaxista.enCurso;
+      _segundosRestantesConfirmacion = null;
+      _ultimoRechazoEn = DateTime.now();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('El pasajero indica que aún no llega a su destino'),
+      ),
+    );
   }
 
-  VoidCallback get _accionEstado {
-    switch (_estado) {
-      case _EstadoViajeTaxista.enCamino:
-        return _marcarLlegada;
-      case _EstadoViajeTaxista.llego:
-        return _intentarIniciarViaje;
-      case _EstadoViajeTaxista.enCurso:
-        return _completarViaje;
-    }
+  void _irACalificar(Map<String, dynamic> data) {
+    final viajeId = _extraerViajeId(data, widget.args.solicitudId);
+    context.go(
+      '/calificar-pasajero',
+      extra: CalificarPasajeroArgs(viajeId: viajeId, viajeArgs: widget.args),
+    );
   }
+
+  // --- Navegación externa ----------------------------------------------
 
   // Mientras el taxista va hacia el pasajero, navega al punto de recogida;
-  // una vez que llegó (esperando o ya en viaje), navega al destino final.
+  // una vez que llegó (esperando, en viaje o esperando confirmación),
+  // navega al destino final.
   double? get _navLat => _estado == _EstadoViajeTaxista.enCamino
       ? widget.args.origenLat
       : widget.args.destinoLat;
@@ -356,93 +635,23 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: const ClodDrawer(),
       body: SafeArea(
-        child: Column(
+        bottom: false,
+        child: Stack(
           children: [
-            Expanded(
-              child: mapbox.MapWidget(
-                viewport: mapbox.CameraViewportState(
-                  center: _puntoDesdePosicion(
-                    _locationService.posicionActual.value,
-                  ),
-                  zoom: 15,
-                ),
-                onMapCreated: _onMapaCreado,
-              ),
+            Positioned.fill(
+              child: _estado == _EstadoViajeTaxista.enCamino
+                  ? _vistaConMapa(context)
+                  : _vistaSinMapa(context),
             ),
-            Container(
-              padding: const EdgeInsets.all(24),
-              // Antes era azulMarino fijo al 20% — en modo claro eso dejaba
-              // el texto (sin color explícito) con contraste inconsistente.
-              // fondoTarjeta(context) responde al tema, igual que el resto
-              // de la app.
-              decoration: BoxDecoration(
-                color: CLODColors.fondoTarjeta(context),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      widget.args.pasajeroNombre,
-                      style: CLODTextStyles.headingSmall.copyWith(
-                        color: CLODColors.texto(context),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _subtituloEstado,
-                      style: CLODTextStyles.bodyMedium.copyWith(
-                        color: CLODColors.azulCLOD,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    if (_navLat != null && _navLng != null) ...[
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _abrirNavegacionExterna,
-                          icon: Icon(
-                            Icons.navigation_outlined,
-                            color: CLODColors.azulCLOD,
-                          ),
-                          label: Text(
-                            'Abrir en Waze o Google Maps',
-                            style: CLODTextStyles.bodyLarge.copyWith(
-                              color: CLODColors.azulCLOD,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                              color: CLODColors.azulCLOD.withValues(
-                                alpha: 0.5,
-                              ),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (_estado == _EstadoViajeTaxista.llego)
-                      _SeccionCodigoSeguridad(
-                        controller: _codigoController,
-                        enviando: _enviandoCodigo,
-                        mensajeError: _mensajeErrorCodigo,
-                        segundosBloqueo: _segundosBloqueoRestantes,
-                        onIniciar: _intentarIniciarViaje,
-                      )
-                    else
-                      CLODPrimaryButton(
-                        label: _textoBotonEstado,
-                        cargando: _accionEnProgreso,
-                        onPressed: _accionEstado,
-                      ),
-                  ],
-                ),
+            Positioned(
+              top: 12,
+              left: 16,
+              child: BotonFlotanteVidrio(
+                icono: FontAwesomeIcons.bars,
+                onTap: () => _scaffoldKey.currentState?.openDrawer(),
               ),
             ),
           ],
@@ -450,7 +659,173 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
       ),
     );
   }
+
+  Widget _vistaConMapa(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: mapbox.MapWidget(
+            viewport: mapbox.CameraViewportState(
+              center: _puntoDesdePosicion(
+                _locationService.posicionActual.value,
+              ),
+              zoom: 15,
+            ),
+            onMapCreated: _onMapaCreado,
+          ),
+        ),
+        _panelInferior(
+          context,
+          children: [
+            Text(
+              widget.args.pasajeroNombre,
+              style: CLODTextStyles.headingSmall.copyWith(
+                color: CLODColors.texto(context),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Yendo al punto de encuentro',
+              style: CLODTextStyles.bodyMedium.copyWith(
+                color: CLODColors.azulCLOD,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _botonWaze(context),
+            const SizedBox(height: 12),
+            CLODPrimaryButton(
+              label: 'He llegado',
+              cargando: _marcandoLlegada,
+              onPressed: _marcarLlegada,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Sin mapa (A): "llego", "enCurso" y "esperandoConfirmacion" — el área que
+  // dejaba el MapWidget se ocupa con un panel de contenido limpio, no con un
+  // hueco vacío arriba.
+  Widget _vistaSinMapa(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.args.pasajeroNombre,
+            style: CLODTextStyles.headingMedium.copyWith(
+              color: CLODColors.texto(context),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_estado != _EstadoViajeTaxista.llego) ...[
+            Text(
+              'Destino',
+              style: CLODTextStyles.bodySmall.copyWith(
+                color: CLODColors.texto(context).withValues(alpha: 0.5),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              widget.args.destinoDireccion,
+              style: CLODTextStyles.bodyLarge.copyWith(
+                color: CLODColors.texto(context),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (_estado != _EstadoViajeTaxista.esperandoConfirmacion) ...[
+            Row(
+              children: [
+                FaIcon(
+                  FontAwesomeIcons.stopwatch,
+                  size: 16,
+                  color: CLODColors.azulCLOD,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _estado == _EstadoViajeTaxista.llego
+                      ? 'Esperando desde $_textoCronometro'
+                      : 'Tiempo transcurrido: $_textoCronometro',
+                  style: CLODTextStyles.bodyMedium.copyWith(
+                    color: CLODColors.texto(context).withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+          _botonWaze(context),
+          const SizedBox(height: 16),
+          switch (_estado) {
+            _EstadoViajeTaxista.llego => _SeccionCodigoSeguridad(
+              controller: _codigoController,
+              enviando: _enviandoCodigo,
+              mensajeError: _mensajeErrorCodigo,
+              segundosBloqueo: _segundosBloqueoRestantes,
+              onIniciar: _intentarIniciarViaje,
+              onCancelar: _cancelando ? null : _mostrarDialogoCancelar,
+              cancelando: _cancelando,
+            ),
+            _EstadoViajeTaxista.enCurso => CLODPrimaryButton(
+              label: 'Completar viaje',
+              cargando: _completando,
+              onPressed: _tocarCompletarViaje,
+            ),
+            _EstadoViajeTaxista.esperandoConfirmacion =>
+              _SeccionEsperandoConfirmacion(
+                segundosRestantes: _segundosRestantesConfirmacion ?? 0,
+                onFinalizarSinConfirmacion: _completando
+                    ? null
+                    : _finalizarSinConfirmacion,
+                cargando: _completando,
+              ),
+            _EstadoViajeTaxista.enCamino => const SizedBox.shrink(),
+          },
+        ],
+      ),
+    );
+  }
+
+  Widget _panelInferior(BuildContext context, {required List<Widget> children}) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: CLODColors.fondoTarjeta(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+      ),
+    );
+  }
+
+  Widget _botonWaze(BuildContext context) {
+    if (_navLat == null || _navLng == null) return const SizedBox.shrink();
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _abrirNavegacionExterna,
+        icon: Icon(Icons.navigation_outlined, color: CLODColors.azulCLOD),
+        label: Text(
+          'Abrir en Waze o Google Maps',
+          style: CLODTextStyles.bodyLarge.copyWith(color: CLODColors.azulCLOD),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: CLODColors.azulCLOD.withValues(alpha: 0.5)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+    );
+  }
 }
+
+enum _MotivoHoja { fueraDeDestino, pocoPrecisa, fallaUbicacion, permisoDenegado }
+
+enum _AccionHoja { pedirConfirmacion, volver }
 
 // El taxista ya marcó "He llegado" (estado en_espera) — le pide al pasajero
 // su código de seguridad de 4 dígitos antes de poder iniciar el viaje.
@@ -461,6 +836,8 @@ class _SeccionCodigoSeguridad extends StatelessWidget {
     required this.mensajeError,
     required this.segundosBloqueo,
     required this.onIniciar,
+    required this.onCancelar,
+    required this.cancelando,
   });
 
   final PinInputController controller;
@@ -468,12 +845,8 @@ class _SeccionCodigoSeguridad extends StatelessWidget {
   final String? mensajeError;
   final int? segundosBloqueo;
   final VoidCallback onIniciar;
-
-  String _formatearTiempo(int totalSegundos) {
-    final minutos = totalSegundos ~/ 60;
-    final segundos = totalSegundos % 60;
-    return '$minutos:${segundos.toString().padLeft(2, '0')}';
-  }
+  final VoidCallback? onCancelar;
+  final bool cancelando;
 
   @override
   Widget build(BuildContext context) {
@@ -560,7 +933,7 @@ class _SeccionCodigoSeguridad extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     'Demasiados intentos. Intenta de nuevo en '
-                    '${_formatearTiempo(segundosBloqueo!)}',
+                    '${_formatearMinSeg(segundosBloqueo!)}',
                     textAlign: TextAlign.center,
                     style: CLODTextStyles.bodyMedium.copyWith(
                       color: CLODColors.rojoUbicacion,
@@ -575,9 +948,299 @@ class _SeccionCodigoSeguridad extends StatelessWidget {
                   habilitado: controller.text.length == 4 && !bloqueado,
                   onPressed: onIniciar,
                 ),
+                const SizedBox(height: 12),
+                Center(
+                  child: TextButton(
+                    onPressed: onCancelar,
+                    child: cancelando
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                CLODColors.texto(context).withValues(alpha: 0.6),
+                              ),
+                            ),
+                          )
+                        : Text(
+                            'El pasajero no llegó',
+                            style: CLODTextStyles.bodyMedium.copyWith(
+                              color: CLODColors.texto(context).withValues(alpha: 0.6),
+                            ),
+                          ),
+                  ),
+                ),
               ],
             );
           },
+        ),
+      ],
+    );
+  }
+}
+
+class _DialogoCancelarViaje extends StatefulWidget {
+  const _DialogoCancelarViaje();
+
+  @override
+  State<_DialogoCancelarViaje> createState() => _DialogoCancelarViajeState();
+}
+
+class _DialogoCancelarViajeState extends State<_DialogoCancelarViaje> {
+  CancelarViajeMotivo _motivo = CancelarViajeMotivo.pasajeroNoLlego;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('¿Cancelar el viaje?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Cancelar no tiene ninguna consecuencia para ti.',
+            style: CLODTextStyles.bodyMedium.copyWith(
+              color: CLODColors.texto(context).withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _OpcionMotivo(
+            titulo: 'El pasajero no llegó',
+            seleccionado: _motivo == CancelarViajeMotivo.pasajeroNoLlego,
+            onTap: () =>
+                setState(() => _motivo = CancelarViajeMotivo.pasajeroNoLlego),
+          ),
+          _OpcionMotivo(
+            titulo: 'El pasajero no responde',
+            seleccionado: _motivo == CancelarViajeMotivo.pasajeroNoResponde,
+            onTap: () => setState(
+              () => _motivo = CancelarViajeMotivo.pasajeroNoResponde,
+            ),
+          ),
+          _OpcionMotivo(
+            titulo: 'Otro motivo',
+            seleccionado: _motivo == CancelarViajeMotivo.otro,
+            onTap: () => setState(() => _motivo = CancelarViajeMotivo.otro),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            'Volver',
+            style: CLODTextStyles.bodyLarge.copyWith(
+              color: CLODColors.texto(context).withValues(alpha: 0.6),
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_motivo),
+          child: Text(
+            'Cancelar viaje',
+            style: CLODTextStyles.bodyLarge.copyWith(
+              color: CLODColors.rojoUbicacion,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OpcionMotivo extends StatelessWidget {
+  const _OpcionMotivo({
+    required this.titulo,
+    required this.seleccionado,
+    required this.onTap,
+  });
+
+  final String titulo;
+  final bool seleccionado;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Icon(
+              seleccionado
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              size: 20,
+              color: seleccionado
+                  ? CLODColors.azulCLOD
+                  : CLODColors.texto(context).withValues(alpha: 0.4),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              titulo,
+              style: CLODTextStyles.bodyLarge.copyWith(
+                color: CLODColors.texto(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HojaNoEnDestino extends StatelessWidget {
+  const _HojaNoEnDestino({
+    required this.motivo,
+    required this.distanciaM,
+    required this.radioM,
+    required this.puedeConfirmacion,
+    required this.segundosParaReintentar,
+  });
+
+  final _MotivoHoja motivo;
+  final double? distanciaM;
+  final double? radioM;
+  final bool puedeConfirmacion;
+  final int? segundosParaReintentar;
+
+  @override
+  Widget build(BuildContext context) {
+    final (titulo, cuerpo) = switch (motivo) {
+      _MotivoHoja.fueraDeDestino => (
+        'Aún no estás en el punto de destino',
+        distanciaM != null
+            ? 'Estás a ~${distanciaM!.round()} m del destino.'
+            : 'Tu ubicación no coincide con el destino del viaje.',
+      ),
+      _MotivoHoja.pocoPrecisa => (
+        'No pudimos verificar tu ubicación',
+        'La señal de GPS es poco precisa en este momento.',
+      ),
+      _MotivoHoja.fallaUbicacion => (
+        'No pudimos verificar tu ubicación',
+        'No se pudo obtener tu posición a tiempo. Verifica tu GPS e '
+            'intenta de nuevo.',
+      ),
+      _MotivoHoja.permisoDenegado => (
+        'Necesitamos tu ubicación',
+        'Activa el permiso de ubicación de TaxiCLOD en Ajustes del '
+            'teléfono para poder verificar que llegaste al destino.',
+      ),
+    };
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          24,
+          24,
+          24 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: CLODColors.texto(context).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              titulo,
+              style: CLODTextStyles.headingSmall.copyWith(
+                color: CLODColors.texto(context),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              cuerpo,
+              style: CLODTextStyles.bodyMedium.copyWith(
+                color: CLODColors.texto(context).withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (puedeConfirmacion)
+              CLODPrimaryButton(
+                label: 'Pedir confirmación al pasajero',
+                onPressed: () =>
+                    Navigator.of(context).pop(_AccionHoja.pedirConfirmacion),
+              )
+            else if (segundosParaReintentar != null)
+              Text(
+                'Podrás volver a pedir confirmación en '
+                '${segundosParaReintentar}s',
+                textAlign: TextAlign.center,
+                style: CLODTextStyles.bodySmall.copyWith(
+                  color: CLODColors.texto(context).withValues(alpha: 0.5),
+                ),
+              ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(_AccionHoja.volver),
+              child: Text(
+                'Volver al viaje',
+                style: CLODTextStyles.bodyLarge.copyWith(
+                  color: CLODColors.texto(context).withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SeccionEsperandoConfirmacion extends StatelessWidget {
+  const _SeccionEsperandoConfirmacion({
+    required this.segundosRestantes,
+    required this.onFinalizarSinConfirmacion,
+    required this.cargando,
+  });
+
+  final int segundosRestantes;
+  final VoidCallback? onFinalizarSinConfirmacion;
+  final bool cargando;
+
+  @override
+  Widget build(BuildContext context) {
+    final agotado = segundosRestantes <= 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Icon(Icons.hourglass_top, color: CLODColors.azulCLOD, size: 36),
+        const SizedBox(height: 12),
+        Text(
+          'Esperando la confirmación del pasajero',
+          textAlign: TextAlign.center,
+          style: CLODTextStyles.headingSmall.copyWith(
+            color: CLODColors.texto(context),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          agotado ? '0:00' : _formatearMinSeg(segundosRestantes),
+          textAlign: TextAlign.center,
+          style: CLODTextStyles.headingLarge.copyWith(
+            color: CLODColors.texto(context).withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 24),
+        CLODPrimaryButton(
+          label: 'Finalizar sin confirmación',
+          habilitado: agotado,
+          cargando: cargando,
+          onPressed: onFinalizarSinConfirmacion,
         ),
       ],
     );

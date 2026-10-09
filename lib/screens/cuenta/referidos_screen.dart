@@ -6,6 +6,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../routes/app_router.dart';
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_app_bar.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_text_field.dart';
 
@@ -251,6 +253,8 @@ class _ReferidosScreenState extends State<ReferidosScreen> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const ClodAppBar(titulo: 'Mis referidos'),
+      drawer: const ClodDrawer(),
       body: SafeArea(
         child: _cargando
             ? Center(

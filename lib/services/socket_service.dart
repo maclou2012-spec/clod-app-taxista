@@ -38,6 +38,20 @@ class SocketService {
   Stream<Map<String, dynamic>> get viajeCancelado =>
       _viajeCanceladoController.stream;
 
+  final StreamController<Map<String, dynamic>> _viajeCompletadoController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get viajeCompletado =>
+      _viajeCompletadoController.stream;
+
+  // El pasajero rechazó "¿ya llegaste?" tras un solicitar-fin — el viaje
+  // sigue, el taxista puede volver a pedir confirmación pasados 60s.
+  final StreamController<Map<String, dynamic>> _finViajeRechazadoController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get finViajeRechazado =>
+      _finViajeRechazadoController.stream;
+
   // Solicitud del viaje en curso, si hay uno — se incluye automáticamente en
   // cada emisión de ubicación para que el backend también transmita a la
   // sala de esa solicitud específica.
@@ -106,6 +120,20 @@ class SocketService {
         if (kDebugMode) debugPrint('SocketService: viaje_cancelado $data');
         if (data is Map) {
           _viajeCanceladoController.add(Map<String, dynamic>.from(data));
+        }
+      })
+      ..on('viaje_completado', (data) {
+        if (kDebugMode) debugPrint('SocketService: viaje_completado $data');
+        if (data is Map) {
+          _viajeCompletadoController.add(Map<String, dynamic>.from(data));
+        }
+      })
+      ..on('fin_viaje_rechazado', (data) {
+        if (kDebugMode) {
+          debugPrint('SocketService: fin_viaje_rechazado $data');
+        }
+        if (data is Map) {
+          _finViajeRechazadoController.add(Map<String, dynamic>.from(data));
         }
       });
   }

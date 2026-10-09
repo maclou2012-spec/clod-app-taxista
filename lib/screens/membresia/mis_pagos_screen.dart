@@ -3,6 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_app_bar.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_error_text.dart';
 
 dynamic _campo(Map<String, dynamic> mapa, List<String> llaves) {
@@ -139,20 +141,12 @@ class _MisPagosScreenState extends State<MisPagosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const ClodAppBar(titulo: 'Mis pagos y facturas'),
+      drawer: const ClodDrawer(),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 48),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'Mis pagos y facturas',
-                style: CLODTextStyles.headingMedium.copyWith(
-                  color: CLODColors.texto(context),
-                ),
-              ),
-            ),
             const SizedBox(height: 24),
             Expanded(
               child: _cargando

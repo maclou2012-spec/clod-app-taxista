@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
 import '../../widgets/clod_text_field.dart';
@@ -215,6 +216,7 @@ class _DatosFiscalesScreenState extends State<DatosFiscalesScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: CLODColors.texto(context)),
       ),
+      drawer: const ClodDrawer(),
       body: SafeArea(
         top: false,
         child: _cargandoDatos

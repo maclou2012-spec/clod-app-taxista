@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_app_bar.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
 import '../../widgets/clod_text_field.dart';
@@ -113,6 +115,8 @@ class _ContactoEmergenciaScreenState extends State<ContactoEmergenciaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const ClodAppBar(titulo: 'Contacto de emergencia'),
+      drawer: const ClodDrawer(),
       body: SafeArea(
         child: _cargandoPerfil
             ? Center(

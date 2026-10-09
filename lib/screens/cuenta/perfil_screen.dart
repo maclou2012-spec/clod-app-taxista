@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../routes/app_router.dart';
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../widgets/clod_app_bar.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_error_text.dart';
 
 class PerfilScreen extends StatefulWidget {
@@ -171,6 +173,8 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const ClodAppBar(titulo: 'Mi perfil'),
+      drawer: const ClodDrawer(),
       body: SafeArea(
         child: _cargando
             ? Center(

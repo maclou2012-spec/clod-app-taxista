@@ -11,6 +11,10 @@ class ViajeEnCursoArgs {
     this.destinoLat,
     this.destinoLng,
     this.estado = 'aceptado',
+    this.llegadaEn,
+    this.finSolicitadoEn,
+    this.finRechazadoEn,
+    this.segundosRestantesConfirmacion,
   });
 
   final int solicitudId;
@@ -32,4 +36,13 @@ class ViajeEnCursoArgs {
   // paso arranca ViajeEnCursoScreen. Por defecto 'aceptado', que es el
   // estado real justo al aceptar una solicitud nueva.
   final String estado;
+
+  // Campos de GET /solicitudes/:id/detalle, usados para reanudar en el
+  // paso correcto al reabrir la app (incluido "esperando confirmación", que
+  // no es un valor de `estado` aparte sino en_curso + finSolicitadoEn sin
+  // rechazo posterior). Nulos en una solicitud recién aceptada.
+  final DateTime? llegadaEn;
+  final DateTime? finSolicitadoEn;
+  final DateTime? finRechazadoEn;
+  final int? segundosRestantesConfirmacion;
 }

@@ -15,6 +15,7 @@ import '../../services/location_tracking_service.dart';
 import '../../services/socket_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../utils/mapa_utils.dart';
+import '../../widgets/clod_drawer.dart';
 import '../../widgets/dev_menu_button.dart';
 import '../../widgets/neumorphic_button.dart';
 import '../../widgets/neumorphic_card.dart';
@@ -405,19 +406,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // widget resuelve su color directo desde CLODColors, así que ya no
     // hace falta envolver la pantalla en nada especial.
     return Scaffold(
+      // Sin leading/actions explícitos: Dashboard es la raíz tras iniciar
+      // sesión (nada que "atrás"), así que el leading automático de AppBar
+      // ya muestra el menú hamburguesa a la izquierda porque hay un
+      // Scaffold.drawer y no hay nada que hacer pop — Mi perfil ahora se
+      // alcanza desde ahí (Mi cuenta), no con un ícono aparte a la derecha.
       appBar: AppBar(
         elevation: 0,
-        automaticallyImplyLeading: false,
-        // Acceso temporal a Perfil hasta que exista una navegación inferior
-        // real (tab bar), a evaluar al cierre del Bloque 5.
-        actions: [
-          IconButton(
-            icon: const FaIcon(FontAwesomeIcons.circleUser),
-            tooltip: 'Perfil',
-            onPressed: () => context.push('/perfil'),
-          ),
-        ],
+        backgroundColor: CLODColors.fondoPantalla(context),
+        iconTheme: IconThemeData(color: CLODColors.texto(context)),
       ),
+      drawer: const ClodDrawer(),
       body: Stack(
         children: [
           SafeArea(
