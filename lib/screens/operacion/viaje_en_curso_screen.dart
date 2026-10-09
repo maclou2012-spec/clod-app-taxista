@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
+import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/calificar_pasajero_args.dart';
@@ -62,8 +64,17 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
 
   late _EstadoViajeTaxista _estado = _estadoInicialDesde(widget.args.estado);
   bool _marcandoLlegada = false;
-  bool _iniciando = false;
   bool _completando = false;
+
+  // Código de seguridad (paso "en_espera") — el controller también maneja
+  // el estado de error y la sacudida (triggerError/clearError, ver
+  // package:pin_code_fields), así que no hace falta un AnimationController
+  // propio para la sacudida.
+  final PinInputController _codigoController = PinInputController();
+  bool _enviandoCodigo = false;
+  String? _mensajeErrorCodigo;
+  int? _segundosBloqueoRestantes;
+  Timer? _bloqueoTimer;
 
   static final mapbox.Point _centroVeracruz = mapbox.Point(
     coordinates: mapbox.Position(-96.1342, 19.1738),
@@ -79,6 +90,8 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
   @override
   void dispose() {
     _locationService.posicionActual.removeListener(_onPosicionActualizada);
+    _bloqueoTimer?.cancel();
+    _codigoController.dispose();
     super.dispose();
   }
 
@@ -149,23 +162,88 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
     }
   }
 
-  Future<void> _iniciarViaje() async {
-    setState(() => _iniciando = true);
+  Future<void> _intentarIniciarViaje() async {
+    final codigo = _codigoController.text;
+    if (codigo.length != 4 ||
+        _enviandoCodigo ||
+        _segundosBloqueoRestantes != null) {
+      return;
+    }
 
-    try {
-      await _apiService.iniciarViaje(widget.args.solicitudId);
-      if (mounted) setState(() => _estado = _EstadoViajeTaxista.enCurso);
-    } catch (e) {
-      if (mounted) {
+    setState(() {
+      _enviandoCodigo = true;
+      _mensajeErrorCodigo = null;
+    });
+
+    final respuesta = await _apiService.iniciarViaje(
+      widget.args.solicitudId,
+      codigo,
+    );
+    if (!mounted) return;
+
+    switch (respuesta.resultado) {
+      case IniciarViajeResultado.exito:
+        setState(() => _estado = _EstadoViajeTaxista.enCurso);
+      case IniciarViajeResultado.codigoIncorrecto:
+        _manejarCodigoIncorrecto(respuesta.intentosRestantes);
+      case IniciarViajeResultado.bloqueado:
+        _manejarBloqueo(respuesta.segundosRestantes);
+      case IniciarViajeResultado.estadoInvalido:
+        setState(
+          () => _mensajeErrorCodigo =
+              'El estado del viaje cambió. Vuelve a intentarlo.',
+        );
+      case IniciarViajeResultado.otroError:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('No se pudo iniciar el viaje. Intenta de nuevo.'),
           ),
         );
-      }
-    } finally {
-      if (mounted) setState(() => _iniciando = false);
     }
+
+    setState(() => _enviandoCodigo = false);
+  }
+
+  void _manejarCodigoIncorrecto(int? intentosRestantes) {
+    setState(() {
+      _mensajeErrorCodigo = intentosRestantes != null
+          ? 'Código incorrecto. Te quedan $intentosRestantes '
+                '${intentosRestantes == 1 ? "intento" : "intentos"}'
+          : 'Código incorrecto. Intenta de nuevo.';
+    });
+    // triggerError() dispara la sacudida breve del propio paquete; se limpia
+    // solo el texto (no el error, que setText no toca) para que el mensaje
+    // siga visible hasta que el taxista escriba el siguiente dígito —
+    // clearErrorOnInput (activado por defecto en MaterialPinField) lo oculta
+    // automáticamente en ese momento.
+    _codigoController.triggerError();
+    _codigoController.text = '';
+    _codigoController.requestFocus();
+  }
+
+  void _manejarBloqueo(int? segundosRestantes) {
+    final total = segundosRestantes ?? 0;
+    setState(() {
+      _mensajeErrorCodigo = null;
+      _segundosBloqueoRestantes = total;
+    });
+    _codigoController.clear();
+
+    _bloqueoTimer?.cancel();
+    if (total <= 0) return;
+    _bloqueoTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final restante = (_segundosBloqueoRestantes ?? 1) - 1;
+      if (restante <= 0) {
+        timer.cancel();
+        setState(() => _segundosBloqueoRestantes = null);
+      } else {
+        setState(() => _segundosBloqueoRestantes = restante);
+      }
+    });
   }
 
   Future<void> _completarViaje() async {
@@ -224,12 +302,15 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
     }
   }
 
+  // _accionEnProgreso/_accionEstado solo se usan para enCamino/enCurso — el
+  // paso "llego" ya no pasa por el botón genérico (build() lo reemplaza por
+  // _SeccionCodigoSeguridad), así que su rama aquí nunca se renderiza.
   bool get _accionEnProgreso {
     switch (_estado) {
       case _EstadoViajeTaxista.enCamino:
         return _marcandoLlegada;
       case _EstadoViajeTaxista.llego:
-        return _iniciando;
+        return _enviandoCodigo;
       case _EstadoViajeTaxista.enCurso:
         return _completando;
     }
@@ -240,7 +321,7 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
       case _EstadoViajeTaxista.enCamino:
         return _marcarLlegada;
       case _EstadoViajeTaxista.llego:
-        return _iniciarViaje;
+        return _intentarIniciarViaje;
       case _EstadoViajeTaxista.enCurso:
         return _completarViaje;
     }
@@ -291,63 +372,214 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen> {
             ),
             Container(
               padding: const EdgeInsets.all(24),
+              // Antes era azulMarino fijo al 20% — en modo claro eso dejaba
+              // el texto (sin color explícito) con contraste inconsistente.
+              // fondoTarjeta(context) responde al tema, igual que el resto
+              // de la app.
               decoration: BoxDecoration(
-                color: CLODColors.azulMarino.withValues(alpha: 0.2),
+                color: CLODColors.fondoTarjeta(context),
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    widget.args.pasajeroNombre,
-                    style: CLODTextStyles.headingSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _subtituloEstado,
-                    style: CLODTextStyles.bodyMedium.copyWith(
-                      color: CLODColors.azulCLOD,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  if (_navLat != null && _navLng != null) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _abrirNavegacionExterna,
-                        icon: Icon(
-                          Icons.navigation_outlined,
-                          color: CLODColors.azulCLOD,
-                        ),
-                        label: Text(
-                          'Abrir en Waze o Google Maps',
-                          style: CLODTextStyles.bodyLarge.copyWith(
-                            color: CLODColors.azulCLOD,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: CLODColors.azulCLOD.withValues(alpha: 0.5),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      widget.args.pasajeroNombre,
+                      style: CLODTextStyles.headingSmall.copyWith(
+                        color: CLODColors.texto(context),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 4),
+                    Text(
+                      _subtituloEstado,
+                      style: CLODTextStyles.bodyMedium.copyWith(
+                        color: CLODColors.azulCLOD,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    if (_navLat != null && _navLng != null) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _abrirNavegacionExterna,
+                          icon: Icon(
+                            Icons.navigation_outlined,
+                            color: CLODColors.azulCLOD,
+                          ),
+                          label: Text(
+                            'Abrir en Waze o Google Maps',
+                            style: CLODTextStyles.bodyLarge.copyWith(
+                              color: CLODColors.azulCLOD,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: CLODColors.azulCLOD.withValues(
+                                alpha: 0.5,
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (_estado == _EstadoViajeTaxista.llego)
+                      _SeccionCodigoSeguridad(
+                        controller: _codigoController,
+                        enviando: _enviandoCodigo,
+                        mensajeError: _mensajeErrorCodigo,
+                        segundosBloqueo: _segundosBloqueoRestantes,
+                        onIniciar: _intentarIniciarViaje,
+                      )
+                    else
+                      CLODPrimaryButton(
+                        label: _textoBotonEstado,
+                        cargando: _accionEnProgreso,
+                        onPressed: _accionEstado,
+                      ),
                   ],
-                  CLODPrimaryButton(
-                    label: _textoBotonEstado,
-                    cargando: _accionEnProgreso,
-                    onPressed: _accionEstado,
-                  ),
-                ],
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// El taxista ya marcó "He llegado" (estado en_espera) — le pide al pasajero
+// su código de seguridad de 4 dígitos antes de poder iniciar el viaje.
+class _SeccionCodigoSeguridad extends StatelessWidget {
+  const _SeccionCodigoSeguridad({
+    required this.controller,
+    required this.enviando,
+    required this.mensajeError,
+    required this.segundosBloqueo,
+    required this.onIniciar,
+  });
+
+  final PinInputController controller;
+  final bool enviando;
+  final String? mensajeError;
+  final int? segundosBloqueo;
+  final VoidCallback onIniciar;
+
+  String _formatearTiempo(int totalSegundos) {
+    final minutos = totalSegundos ~/ 60;
+    final segundos = totalSegundos % 60;
+    return '$minutos:${segundos.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bloqueado = segundosBloqueo != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Pide el código de seguridad al pasajero',
+          style: CLODTextStyles.headingSmall.copyWith(
+            color: CLODColors.texto(context),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // ListenableBuilder re-renderiza esta sección (no toda la pantalla)
+        // en cada tecleo, para habilitar el botón solo con los 4 dígitos.
+        ListenableBuilder(
+          listenable: controller,
+          builder: (context, _) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                MaterialPinField(
+                  length: 4,
+                  pinController: controller,
+                  enabled: !bloqueado && !enviando,
+                  autoFocus: true,
+                  keyboardType: TextInputType.number,
+                  textCapitalization: TextCapitalization.none,
+                  obscureText: false,
+                  errorText: mensajeError,
+                  // clearErrorOnInput (true por defecto) borra el error en
+                  // CUALQUIER cambio de texto, incluido el controller.text =
+                  // '' programático que usa _manejarCodigoIncorrecto para
+                  // vaciar las casillas — eso apagaba el mensaje de error
+                  // apenas se disparaba. Se maneja a mano: solo se limpia
+                  // cuando el propio pasajero empieza a escribir el
+                  // siguiente intento (texto no vacío).
+                  clearErrorOnInput: false,
+                  onChanged: (texto) {
+                    if (texto.isNotEmpty) controller.clearError();
+                  },
+                  onCompleted: (_) => onIniciar(),
+                  theme: MaterialPinTheme(
+                    shape: MaterialPinShape.outlined,
+                    cellSize: const Size(52, 60),
+                    spacing: 10,
+                    fillColor: CLODColors.fondoPantalla(context),
+                    focusedFillColor: CLODColors.fondoPantalla(context),
+                    filledFillColor: CLODColors.fondoPantalla(context),
+                    completeFillColor: CLODColors.fondoPantalla(context),
+                    borderColor: CLODColors.borde(context),
+                    focusedBorderColor: CLODColors.azulCLOD,
+                    filledBorderColor: CLODColors.azulCLOD,
+                    completeBorderColor: CLODColors.azulCLOD,
+                    errorColor: CLODColors.rojoUbicacion,
+                    errorBorderColor: CLODColors.rojoUbicacion,
+                    errorFillColor: CLODColors.fondoPantalla(context),
+                    disabledColor: CLODColors.texto(
+                      context,
+                    ).withValues(alpha: 0.3),
+                    disabledFillColor: CLODColors.fondoPantalla(
+                      context,
+                    ).withValues(alpha: 0.5),
+                    disabledBorderColor: CLODColors.texto(
+                      context,
+                    ).withValues(alpha: 0.15),
+                    textStyle: CLODTextStyles.headingMedium.copyWith(
+                      color: CLODColors.texto(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Si el pasajero no puede ver su código, pídele los '
+                  'últimos 4 dígitos de su número de teléfono.',
+                  textAlign: TextAlign.center,
+                  style: CLODTextStyles.bodySmall.copyWith(
+                    color: CLODColors.texto(context).withValues(alpha: 0.6),
+                  ),
+                ),
+                if (bloqueado) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Demasiados intentos. Intenta de nuevo en '
+                    '${_formatearTiempo(segundosBloqueo!)}',
+                    textAlign: TextAlign.center,
+                    style: CLODTextStyles.bodyMedium.copyWith(
+                      color: CLODColors.rojoUbicacion,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                CLODPrimaryButton(
+                  label: 'Iniciar viaje',
+                  cargando: enviando,
+                  habilitado: controller.text.length == 4 && !bloqueado,
+                  onPressed: onIniciar,
+                ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }

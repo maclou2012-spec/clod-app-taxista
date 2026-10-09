@@ -14,6 +14,60 @@ class RequiereRegistroException implements Exception {
   String toString() => 'RequiereRegistroException: $data';
 }
 
+enum IniciarViajeResultado {
+  exito,
+  codigoIncorrecto,
+  bloqueado,
+  // El backend responde 409 cuando el estado de la solicitud ya no admite
+  // "iniciar" (ej. otro dispositivo del mismo taxista ya lo inició, o el
+  // pasajero canceló mientras se escribía el código).
+  estadoInvalido,
+  otroError,
+}
+
+// Resultado tipado de POST /solicitudes/:id/iniciar — nunca lanza, así la
+// pantalla no necesita un try/catch para distinguir "código incorrecto" de
+// "bloqueado" de un error de red genérico.
+class IniciarViajeRespuesta {
+  const IniciarViajeRespuesta._(
+    this.resultado, {
+    this.intentosRestantes,
+    this.segundosRestantes,
+  });
+
+  final IniciarViajeResultado resultado;
+  final int? intentosRestantes;
+  final int? segundosRestantes;
+
+  factory IniciarViajeRespuesta.exito() =>
+      const IniciarViajeRespuesta._(IniciarViajeResultado.exito);
+
+  factory IniciarViajeRespuesta.codigoIncorrecto(int? intentosRestantes) =>
+      IniciarViajeRespuesta._(
+        IniciarViajeResultado.codigoIncorrecto,
+        intentosRestantes: intentosRestantes,
+      );
+
+  factory IniciarViajeRespuesta.bloqueado(int? segundosRestantes) =>
+      IniciarViajeRespuesta._(
+        IniciarViajeResultado.bloqueado,
+        segundosRestantes: segundosRestantes,
+      );
+
+  factory IniciarViajeRespuesta.estadoInvalido() =>
+      const IniciarViajeRespuesta._(IniciarViajeResultado.estadoInvalido);
+
+  factory IniciarViajeRespuesta.otroError() =>
+      const IniciarViajeRespuesta._(IniciarViajeResultado.otroError);
+}
+
+int? _comoEntero(dynamic valor) {
+  if (valor is int) return valor;
+  if (valor is num) return valor.toInt();
+  if (valor is String) return int.tryParse(valor);
+  return null;
+}
+
 class ApiService {
   ApiService({Dio? dio, SecureStorageService? secureStorageService})
     : _secureStorageService = secureStorageService ?? SecureStorageService(),
@@ -440,8 +494,53 @@ class ApiService {
     await _dio.post('/api/solicitudes/$solicitudId/llegada');
   }
 
-  Future<void> iniciarViaje(int solicitudId) async {
-    await _dio.post('/api/solicitudes/$solicitudId/iniciar');
+  // No imprime ni guarda el código en ningún lado. Usa un Dio aparte, sin
+  // el LogInterceptor de depuración que el constructor le agrega a _dio
+  // (requestBody: true imprimiría el código tal cual) — mismo patrón de
+  // "dio limpio" que ya usa _refrescarToken para otra llamada sensible.
+  Future<IniciarViajeRespuesta> iniciarViaje(
+    int solicitudId,
+    String codigo,
+  ) async {
+    try {
+      final accessToken = await _secureStorageService.obtenerAccessToken();
+      final dioSinLog = Dio(BaseOptions(baseUrl: baseUrl));
+      if (accessToken != null) {
+        dioSinLog.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      await dioSinLog.post(
+        '/api/solicitudes/$solicitudId/iniciar',
+        data: {'codigo': codigo},
+      );
+      return IniciarViajeRespuesta.exito();
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final codigoError = data is Map<String, dynamic>
+          ? data['codigo'] as String?
+          : null;
+      final statusCode = e.response?.statusCode;
+
+      if (statusCode == 403 && codigoError == 'CODIGO_INCORRECTO') {
+        return IniciarViajeRespuesta.codigoIncorrecto(
+          data is Map<String, dynamic>
+              ? _comoEntero(data['intentos_restantes'])
+              : null,
+        );
+      }
+      if (statusCode == 423 && codigoError == 'CODIGO_BLOQUEADO') {
+        return IniciarViajeRespuesta.bloqueado(
+          data is Map<String, dynamic>
+              ? _comoEntero(data['segundos_restantes'])
+              : null,
+        );
+      }
+      if (statusCode == 409) {
+        return IniciarViajeRespuesta.estadoInvalido();
+      }
+      return IniciarViajeRespuesta.otroError();
+    } catch (e) {
+      return IniciarViajeRespuesta.otroError();
+    }
   }
 
   Future<Map<String, dynamic>> completarViaje(int solicitudId) async {
