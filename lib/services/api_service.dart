@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/parada_viaje.dart';
 import 'secure_storage_service.dart';
 
 class RequiereRegistroException implements Exception {
@@ -90,6 +91,8 @@ enum CompletarViajeResultado {
   // sin confirmación", que sí es un completar válido sin lat/lng — ese caso
   // no debería caer aquí salvo que el backend lo rechace por otra razón).
   sinCoordenadas,
+  // 409 con paradas de servicio/colectivo sin completar ni omitir.
+  paradasPendientes,
   estadoInvalido,
   otroError,
 }
@@ -104,6 +107,7 @@ class CompletarViajeRespuesta {
     this.radioM,
     this.puedeConfirmacion,
     this.data,
+    this.paradasFaltantes = const [],
   });
 
   final CompletarViajeResultado resultado;
@@ -111,9 +115,17 @@ class CompletarViajeRespuesta {
   final double? radioM;
   final bool? puedeConfirmacion;
   final Map<String, dynamic>? data;
+  final List<String> paradasFaltantes;
 
   factory CompletarViajeRespuesta.exito(Map<String, dynamic> data) =>
       CompletarViajeRespuesta._(CompletarViajeResultado.exito, data: data);
+
+  factory CompletarViajeRespuesta.paradasPendientes(
+    List<String> paradasFaltantes,
+  ) => CompletarViajeRespuesta._(
+    CompletarViajeResultado.paradasPendientes,
+    paradasFaltantes: paradasFaltantes,
+  );
 
   factory CompletarViajeRespuesta.fueraDeDestino({
     double? distanciaM,
@@ -660,6 +672,11 @@ class ApiService {
         return CompletarViajeRespuesta.ubicacionPocoPrecisa();
       }
       if (statusCode == 400) return CompletarViajeRespuesta.sinCoordenadas();
+      if (statusCode == 409 && codigoError == 'PARADAS_PENDIENTES') {
+        return CompletarViajeRespuesta.paradasPendientes(
+          direccionesParadasPendientesDesde(data),
+        );
+      }
       if (statusCode == 409) return CompletarViajeRespuesta.estadoInvalido();
       return CompletarViajeRespuesta.otroError();
     } catch (e) {
@@ -674,6 +691,43 @@ class ApiService {
     await _dio.post(
       '/api/solicitudes/$solicitudId/cancelar',
       data: {'motivo': _motivoCancelarComoTexto(motivo)},
+    );
+  }
+
+  // --- Paradas de servicio / viaje colectivo --------------------------------
+
+  Future<void> marcarLlegadaParada(int solicitudId, int paradaId) async {
+    await _dio.post(
+      '/api/solicitudes/$solicitudId/paradas/$paradaId/llegada',
+    );
+  }
+
+  Future<void> completarParada(int solicitudId, int paradaId) async {
+    await _dio.post(
+      '/api/solicitudes/$solicitudId/paradas/$paradaId/completar',
+    );
+  }
+
+  Future<void> omitirParada(int solicitudId, int paradaId) async {
+    await _dio.post('/api/solicitudes/$solicitudId/paradas/$paradaId/omitir');
+  }
+
+  // El sistema no sugiere montos — los 4 campos se mandan tal cual están en
+  // pantalla, sin valores por defecto propios más que 0.
+  Future<void> actualizarPreferenciasParadas({
+    required bool aceptaParadasServicio,
+    required double montoExtraParadaServicio,
+    required bool aceptaViajeColectivo,
+    required double montoExtraParadaColectivo,
+  }) async {
+    await _dio.patch(
+      '/api/taxistas/me/preferencias-paradas',
+      data: {
+        'acepta_paradas_servicio': aceptaParadasServicio,
+        'monto_extra_parada_servicio': montoExtraParadaServicio,
+        'acepta_viaje_colectivo': aceptaViajeColectivo,
+        'monto_extra_parada_colectivo': montoExtraParadaColectivo,
+      },
     );
   }
 

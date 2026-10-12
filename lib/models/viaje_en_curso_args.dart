@@ -1,3 +1,5 @@
+import 'parada_viaje.dart';
+
 class ViajeEnCursoArgs {
   const ViajeEnCursoArgs({
     required this.solicitudId,
@@ -15,6 +17,8 @@ class ViajeEnCursoArgs {
     this.finSolicitadoEn,
     this.finRechazadoEn,
     this.segundosRestantesConfirmacion,
+    this.tipoViaje = 'normal',
+    this.paradas = const [],
   });
 
   final int solicitudId;
@@ -45,4 +49,10 @@ class ViajeEnCursoArgs {
   final DateTime? finSolicitadoEn;
   final DateTime? finRechazadoEn;
   final int? segundosRestantesConfirmacion;
+
+  // 'normal' | 'paradas_servicio' | 'colectivo'. Las paradas vienen en el
+  // orden que ya trae el backend (paradasDesdeMapa las ordena por 'orden'
+  // de todas formas, por si acaso).
+  final String tipoViaje;
+  final List<ParadaViaje> paradas;
 }

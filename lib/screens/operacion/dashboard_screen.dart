@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 
+import '../../models/parada_viaje.dart';
 import '../../models/viaje_en_curso_args.dart';
 import '../../services/api_service.dart';
 import '../../services/location_tracking_service.dart';
@@ -280,6 +281,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         origenLng: origenLng,
         destinoLat: destinoLat,
         destinoLng: destinoLng,
+        tipoViaje: tipoViajeDesdeMapa(solicitud),
+        paradas: paradasDesdeMapa(solicitud),
       );
 
       _socketService.marcarSolicitudActiva(id);
@@ -724,6 +727,15 @@ class _TarjetaSolicitud extends StatelessWidget {
         ]) ??
         '—';
     final tarifa = _campoSolicitud(solicitud, ['tarifa_ofrecida', 'tarifa']);
+    final tipoViaje = tipoViajeDesdeMapa(solicitud);
+    final paradas = paradasDesdeMapa(solicitud);
+    final montoExtraParadas = _campoDecimalSolicitud(solicitud, [
+      'monto_extra_paradas',
+    ]);
+    final totalEstimado = _campoDecimalSolicitud(solicitud, [
+      'total_estimado',
+      'monto_total',
+    ]);
 
     return SafeArea(
       child: Padding(
@@ -737,16 +749,65 @@ class _TarjetaSolicitud extends StatelessWidget {
               textAlign: TextAlign.center,
               style: CLODTextStyles.headingMedium,
             ),
+            if (tipoViaje != 'normal') ...[
+              const SizedBox(height: 8),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: CLODColors.azulMarino.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    tipoViaje == 'colectivo'
+                        ? 'Viaje colectivo'
+                        : 'Con paradas de servicio',
+                    style: CLODTextStyles.bodySmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             _filaDato(FontAwesomeIcons.user, nombrePasajero),
             const SizedBox(height: 12),
             _filaDato(FontAwesomeIcons.locationDot, origen),
+            if (paradas.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              for (final parada in paradas)
+                Padding(
+                  padding: const EdgeInsets.only(left: 32, top: 4),
+                  child: Text(
+                    '${parada.orden}. ${parada.direccion} — '
+                    '${parada.esServicio ? "recoger/dejar paquete" : "recoger a otra persona"}',
+                    style: CLODTextStyles.bodySmall.copyWith(
+                      color: CLODColors.texto(context).withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+            ],
             if (tarifa != null) ...[
               const SizedBox(height: 12),
               _filaDato(
                 FontAwesomeIcons.dollarSign,
-                '\$$tarifa MXN (referencia)',
+                '\$${(totalEstimado ?? (double.tryParse(tarifa) ?? 0) + (montoExtraParadas ?? 0)).toStringAsFixed(2)} MXN (referencia)',
               ),
+              if (paradas.isNotEmpty && montoExtraParadas != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 32, top: 4),
+                  child: Text(
+                    'Ruta \$$tarifa + ${paradas.length} '
+                    '${paradas.length == 1 ? "parada" : "paradas"} × extra',
+                    style: CLODTextStyles.bodySmall.copyWith(
+                      color: CLODColors.texto(context).withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
             ],
             const SizedBox(height: 28),
             Row(

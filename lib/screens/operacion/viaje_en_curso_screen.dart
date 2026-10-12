@@ -11,6 +11,7 @@ import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/calificar_pasajero_args.dart';
+import '../../models/parada_viaje.dart';
 import '../../models/viaje_en_curso_args.dart';
 import '../../services/api_service.dart';
 import '../../services/location_tracking_service.dart';
@@ -160,6 +161,14 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
   Timer? _detallePollTimer;
   bool _consultandoDetalle = false;
 
+  // Paradas de servicio / viaje colectivo — 'normal' no trae ninguna, así
+  // que el resto de esta pantalla sigue exactamente igual que antes.
+  late final String _tipoViaje = widget.args.tipoViaje;
+  late List<ParadaViaje> _paradas = widget.args.paradas;
+  int? _paradaEnAccionId;
+  StreamSubscription<Map<String, dynamic>>? _paradaLlegadaSub;
+  StreamSubscription<Map<String, dynamic>>? _paradaCompletadaSub;
+
   static final mapbox.Point _centroVeracruz = mapbox.Point(
     coordinates: mapbox.Position(-96.1342, 19.1738),
   );
@@ -175,6 +184,12 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
     );
     _finViajeRechazadoSub = _socketService.finViajeRechazado.listen(
       _onFinViajeRechazado,
+    );
+    _paradaLlegadaSub = _socketService.paradaLlegada.listen(
+      (_) => _consultarDetallePeriodico(),
+    );
+    _paradaCompletadaSub = _socketService.paradaCompletada.listen(
+      (_) => _consultarDetallePeriodico(),
     );
     if (_estado == _EstadoViajeTaxista.esperandoConfirmacion) {
       _iniciarCuentaRegresivaConfirmacion();
@@ -196,6 +211,8 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
     _detallePollTimer?.cancel();
     _viajeCompletadoSub?.cancel();
     _finViajeRechazadoSub?.cancel();
+    _paradaLlegadaSub?.cancel();
+    _paradaCompletadaSub?.cancel();
     _codigoController.dispose();
     super.dispose();
   }
@@ -253,6 +270,14 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
         _rechazoVigente(detalle)) {
       _onFinViajeRechazado(detalle);
     }
+    _actualizarParadasDesde(detalle);
+  }
+
+  void _actualizarParadasDesde(Map<String, dynamic> detalle) {
+    final paradas = paradasDesdeMapa(detalle);
+    if (paradas.isEmpty) return;
+    if (!mounted) return;
+    setState(() => _paradas = paradas);
   }
 
   // Tras un 409 de "completar"/"finalizar sin confirmación", el estado del
@@ -579,6 +604,20 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
         );
       case CompletarViajeResultado.ubicacionPocoPrecisa:
         await _mostrarHojaNoEnDestino(motivo: _MotivoHoja.pocoPrecisa);
+      case CompletarViajeResultado.paradasPendientes:
+        await _consultarDetallePeriodico();
+        if (mounted) {
+          final faltantes = respuesta.paradasFaltantes;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                faltantes.isEmpty
+                    ? 'Aún tienes paradas sin completar u omitir.'
+                    : 'Faltan paradas: ${faltantes.join(", ")}',
+              ),
+            ),
+          );
+        }
       case CompletarViajeResultado.estadoInvalido:
         await _resincronizarTrasEstadoInvalido();
       case CompletarViajeResultado.sinCoordenadas:
@@ -728,18 +767,163 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
     );
   }
 
+  // --- Paradas de servicio / viaje colectivo --------------------------------
+
+  // La próxima parada sin resolver — resaltada en la lista y la única con
+  // botones de acción. Las demás, futuras, solo se listan.
+  ParadaViaje? get _paradaActual {
+    for (final parada in _paradas) {
+      if (!parada.completadaUOmitida) return parada;
+    }
+    return null;
+  }
+
+  bool get _todasLasParadasResueltas =>
+      _paradas.every((parada) => parada.completadaUOmitida);
+
+  Future<void> _marcarLlegadaParada(ParadaViaje parada) async {
+    setState(() => _paradaEnAccionId = parada.id);
+    try {
+      await _apiService.marcarLlegadaParada(widget.args.solicitudId, parada.id);
+      await _consultarDetallePeriodico();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo marcar la llegada a la parada.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _paradaEnAccionId = null);
+    }
+  }
+
+  Future<void> _completarParada(ParadaViaje parada) async {
+    setState(() => _paradaEnAccionId = parada.id);
+    try {
+      await _apiService.completarParada(widget.args.solicitudId, parada.id);
+      await _consultarDetallePeriodico();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo completar la parada. Intenta de nuevo.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _paradaEnAccionId = null);
+    }
+  }
+
+  Future<void> _confirmarYOmitirParada(ParadaViaje parada) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Omitir esta parada?'),
+        content: Text(
+          'No tiene ninguna consecuencia para ti.',
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.texto(dialogContext).withValues(alpha: 0.7),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Volver',
+              style: CLODTextStyles.bodyLarge.copyWith(
+                color: CLODColors.texto(dialogContext).withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              'Omitir parada',
+              style: CLODTextStyles.bodyLarge.copyWith(
+                color: CLODColors.rojoUbicacion,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+
+    setState(() => _paradaEnAccionId = parada.id);
+    try {
+      await _apiService.omitirParada(widget.args.solicitudId, parada.id);
+      await _consultarDetallePeriodico();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo omitir la parada. Intenta de nuevo.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _paradaEnAccionId = null);
+    }
+  }
+
   // --- Navegación externa ----------------------------------------------
 
   // Mientras el taxista va hacia el pasajero, navega al punto de recogida;
   // una vez que llegó (esperando, en viaje o esperando confirmación),
-  // navega al destino final.
-  double? get _navLat => _estado == _EstadoViajeTaxista.enCamino
-      ? widget.args.origenLat
-      : widget.args.destinoLat;
+  // navega al destino final — salvo que haya paradas pendientes en curso,
+  // en cuyo caso Waze (que no admite varias paradas) apunta a la siguiente.
+  double? get _navLat {
+    if (_estado == _EstadoViajeTaxista.enCamino) return widget.args.origenLat;
+    if (_estado == _EstadoViajeTaxista.enCurso) {
+      final proxima = _paradaActual;
+      if (proxima?.lat != null) return proxima!.lat;
+    }
+    return widget.args.destinoLat;
+  }
 
-  double? get _navLng => _estado == _EstadoViajeTaxista.enCamino
-      ? widget.args.origenLng
-      : widget.args.destinoLng;
+  double? get _navLng {
+    if (_estado == _EstadoViajeTaxista.enCamino) return widget.args.origenLng;
+    if (_estado == _EstadoViajeTaxista.enCurso) {
+      final proxima = _paradaActual;
+      if (proxima?.lng != null) return proxima!.lng;
+    }
+    return widget.args.destinoLng;
+  }
+
+  List<ParadaViaje> get _paradasPendientesConCoordenadas => _paradas
+      .where(
+        (parada) =>
+            !parada.completadaUOmitida &&
+            parada.lat != null &&
+            parada.lng != null,
+      )
+      .toList();
+
+  Future<void> _abrirGoogleMapsConParadas() async {
+    final destinoLat = widget.args.destinoLat;
+    final destinoLng = widget.args.destinoLng;
+    if (destinoLat == null || destinoLng == null) return;
+
+    final waypoints = _paradasPendientesConCoordenadas
+        .map((parada) => '${parada.lat},${parada.lng}')
+        .join('|');
+
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1'
+      '&destination=$destinoLat,$destinoLng'
+      '${waypoints.isEmpty ? '' : '&waypoints=$waypoints'}'
+      '&travelmode=driving',
+    );
+    final exito = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!exito && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir Google Maps.')),
+      );
+    }
+  }
 
   Future<void> _abrirNavegacionExterna() async {
     final lat = _navLat;
@@ -815,7 +999,9 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
                 color: CLODColors.azulCLOD,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+            _resumenTipoViaje(context),
+            const SizedBox(height: 8),
             _botonWaze(context),
             const SizedBox(height: 12),
             CLODPrimaryButton(
@@ -845,6 +1031,7 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
             ),
           ),
           const SizedBox(height: 8),
+          if (_estado == _EstadoViajeTaxista.llego) _resumenTipoViaje(context),
           if (_estado != _EstadoViajeTaxista.llego) ...[
             Text(
               'Destino',
@@ -894,10 +1081,61 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
               onCancelar: _cancelando ? null : _mostrarDialogoCancelar,
               cancelando: _cancelando,
             ),
-            _EstadoViajeTaxista.enCurso => CLODPrimaryButton(
-              label: 'Completar viaje',
-              cargando: _completando,
-              onPressed: _tocarCompletarViaje,
+            _EstadoViajeTaxista.enCurso => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_tipoViaje != 'normal' && _paradas.isNotEmpty) ...[
+                  _ListaParadas(
+                    paradas: _paradas,
+                    paradaActualId: _paradaActual?.id,
+                    accionEnCursoId: _paradaEnAccionId,
+                    onLlegue: _marcarLlegadaParada,
+                    onCompletar: _completarParada,
+                    onOmitir: _confirmarYOmitirParada,
+                  ),
+                  const SizedBox(height: 16),
+                  if (_paradasPendientesConCoordenadas.isNotEmpty) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _abrirGoogleMapsConParadas,
+                        icon: Icon(
+                          Icons.map_outlined,
+                          color: CLODColors.azulCLOD,
+                        ),
+                        label: Text(
+                          'Abrir en Google Maps (con paradas)',
+                          style: CLODTextStyles.bodyLarge.copyWith(
+                            color: CLODColors.azulCLOD,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: CLODColors.azulCLOD.withValues(alpha: 0.5),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Waze no admite varias paradas — el botón de arriba '
+                      'te lleva solo a la siguiente.',
+                      textAlign: TextAlign.center,
+                      style: CLODTextStyles.bodySmall.copyWith(
+                        color: CLODColors.texto(context).withValues(alpha: 0.5),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ],
+                CLODPrimaryButton(
+                  label: 'Completar viaje',
+                  cargando: _completando,
+                  habilitado: _tipoViaje == 'normal' || _todasLasParadasResueltas,
+                  onPressed: _tocarCompletarViaje,
+                ),
+              ],
             ),
             _EstadoViajeTaxista.esperandoConfirmacion =>
               _SeccionEsperandoConfirmacion(
@@ -924,6 +1162,31 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
       child: SafeArea(
         top: false,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+      ),
+    );
+  }
+
+  // Resumen breve para "aceptado" y "en_espera" — esos dos pasos no
+  // cambian más que esto; el manejo de paradas en sí solo ocurre en
+  // "en_curso".
+  Widget _resumenTipoViaje(BuildContext context) {
+    if (_tipoViaje == 'normal' || _paradas.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final etiqueta = _tipoViaje == 'colectivo'
+        ? 'Viaje colectivo'
+        : 'Con paradas de servicio';
+    final cuenta = _paradas.length == 1
+        ? '1 parada'
+        : '${_paradas.length} paradas';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        '$etiqueta · $cuenta',
+        style: CLODTextStyles.bodyMedium.copyWith(
+          color: CLODColors.azulCLOD,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -1368,6 +1631,174 @@ class _SeccionEsperandoConfirmacion extends StatelessWidget {
           onPressed: onFinalizarSinConfirmacion,
         ),
       ],
+    );
+  }
+}
+
+// Lista de paradas del viaje en curso — solo la próxima parada sin resolver
+// (paradaActualId) tiene botones de acción; las ya completadas/omitidas se
+// muestran tachadas, y las futuras solo se listan sin botones.
+class _ListaParadas extends StatelessWidget {
+  const _ListaParadas({
+    required this.paradas,
+    required this.paradaActualId,
+    required this.accionEnCursoId,
+    required this.onLlegue,
+    required this.onCompletar,
+    required this.onOmitir,
+  });
+
+  final List<ParadaViaje> paradas;
+  final int? paradaActualId;
+  final int? accionEnCursoId;
+  final void Function(ParadaViaje) onLlegue;
+  final void Function(ParadaViaje) onCompletar;
+  final void Function(ParadaViaje) onOmitir;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Paradas de este viaje',
+          style: CLODTextStyles.headingSmall.copyWith(
+            color: CLODColors.texto(context),
+          ),
+        ),
+        const SizedBox(height: 12),
+        for (final parada in paradas) _fila(context, parada),
+      ],
+    );
+  }
+
+  Widget _fila(BuildContext context, ParadaViaje parada) {
+    final esActual = parada.id == paradaActualId;
+    final cargando = accionEnCursoId == parada.id;
+    final resuelta = parada.completadaUOmitida;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: esActual
+            ? CLODColors.azulCLOD.withValues(alpha: 0.1)
+            : CLODColors.fondoTarjeta(context),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: esActual
+              ? CLODColors.azulCLOD
+              : CLODColors.borde(context),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                resuelta ? Icons.check_circle : Icons.circle_outlined,
+                size: 18,
+                color: resuelta
+                    ? CLODColors.azulCLOD
+                    : CLODColors.texto(context).withValues(alpha: 0.4),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${parada.orden}. ${parada.direccion}',
+                  style: CLODTextStyles.bodyMedium.copyWith(
+                    color: CLODColors.texto(context),
+                    decoration: resuelta
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
+                    decorationColor: CLODColors.texto(
+                      context,
+                    ).withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 26),
+            child: Text(
+              parada.estado == 'omitida'
+                  ? 'Omitida'
+                  : parada.estado == 'completada'
+                  ? 'Completada'
+                  : parada.esServicio
+                  ? 'Recoger o dejar paquete/objeto'
+                  : 'Recoger a otra persona',
+              style: CLODTextStyles.bodySmall.copyWith(
+                color: CLODColors.texto(context).withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          if (parada.descripcion != null &&
+              parada.descripcion!.trim().isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(left: 26, top: 2),
+              child: Text(
+                parada.descripcion!,
+                style: CLODTextStyles.bodySmall.copyWith(
+                  color: CLODColors.texto(context).withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+          ],
+          if (parada.nombreContacto != null &&
+              parada.nombreContacto!.trim().isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(left: 26, top: 2),
+              child: Text(
+                'Contacto: ${parada.nombreContacto}',
+                style: CLODTextStyles.bodySmall.copyWith(
+                  color: CLODColors.texto(context).withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+          ],
+          if (esActual && parada.pendiente) ...[
+            const SizedBox(height: 10),
+            CLODPrimaryButton(
+              label: 'Llegué a la parada',
+              cargando: cargando,
+              onPressed: () => onLlegue(parada),
+            ),
+          ],
+          if (esActual && parada.llegada) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: CLODPrimaryButton(
+                    label: 'Parada completada',
+                    cargando: cargando,
+                    onPressed: () => onCompletar(parada),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: cargando ? null : () => onOmitir(parada),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: CLODColors.texto(
+                        context,
+                      ).withValues(alpha: 0.7),
+                      side: BorderSide(color: CLODColors.borde(context)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Omitir parada'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/parada_viaje.dart';
 import '../../models/viaje_en_curso_args.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
@@ -186,6 +187,8 @@ class _SplashScreenState extends State<SplashScreen> {
         segundosRestantesConfirmacion: _campoEntero(detalle, [
           'segundos_restantes_confirmacion',
         ]),
+        tipoViaje: tipoViajeDesdeMapa(detalle),
+        paradas: paradasDesdeMapa(detalle),
       );
       context.go('/viaje-en-curso', extra: args);
       return true;

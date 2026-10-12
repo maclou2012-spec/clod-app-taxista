@@ -52,6 +52,18 @@ class SocketService {
   Stream<Map<String, dynamic>> get finViajeRechazado =>
       _finViajeRechazadoController.stream;
 
+  final StreamController<Map<String, dynamic>> _paradaLlegadaController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get paradaLlegada =>
+      _paradaLlegadaController.stream;
+
+  final StreamController<Map<String, dynamic>> _paradaCompletadaController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get paradaCompletada =>
+      _paradaCompletadaController.stream;
+
   // Solicitud del viaje en curso, si hay uno — se incluye automáticamente en
   // cada emisión de ubicación para que el backend también transmita a la
   // sala de esa solicitud específica.
@@ -134,6 +146,18 @@ class SocketService {
         }
         if (data is Map) {
           _finViajeRechazadoController.add(Map<String, dynamic>.from(data));
+        }
+      })
+      ..on('parada_llegada', (data) {
+        if (kDebugMode) debugPrint('SocketService: parada_llegada $data');
+        if (data is Map) {
+          _paradaLlegadaController.add(Map<String, dynamic>.from(data));
+        }
+      })
+      ..on('parada_completada', (data) {
+        if (kDebugMode) debugPrint('SocketService: parada_completada $data');
+        if (data is Map) {
+          _paradaCompletadaController.add(Map<String, dynamic>.from(data));
         }
       });
   }

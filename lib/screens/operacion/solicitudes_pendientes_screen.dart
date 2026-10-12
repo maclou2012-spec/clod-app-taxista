@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/parada_viaje.dart';
 import '../../models/viaje_en_curso_args.dart';
 import '../../services/api_service.dart';
 import '../../services/location_tracking_service.dart';
@@ -189,6 +190,8 @@ class _SolicitudesPendientesScreenState
         origenLng: origenLng,
         destinoLat: destinoLat,
         destinoLng: destinoLng,
+        tipoViaje: tipoViajeDesdeMapa(solicitud),
+        paradas: paradasDesdeMapa(solicitud),
       );
 
       _socketService.marcarSolicitudActiva(id);
@@ -333,6 +336,15 @@ class _TarjetaSolicitudPendiente extends StatelessWidget {
         '—';
     final tarifa = _campoTexto(solicitud, ['tarifa_ofrecida', 'tarifa']);
     final distanciaKm = _campoDecimal(solicitud, ['distancia_km']);
+    final tipoViaje = tipoViajeDesdeMapa(solicitud);
+    final paradas = paradasDesdeMapa(solicitud);
+    final montoExtraParadas = _campoDecimal(solicitud, [
+      'monto_extra_paradas',
+    ]);
+    final totalEstimado = _campoDecimal(solicitud, [
+      'total_estimado',
+      'monto_total',
+    ]);
 
     return Material(
       color: CLODColors.azulMarino.withValues(alpha: 0.2),
@@ -375,6 +387,28 @@ class _TarjetaSolicitudPendiente extends StatelessWidget {
                       ),
                   ],
                 ),
+                if (tipoViaje != 'normal') ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: CLODColors.azulMarino.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      tipoViaje == 'colectivo'
+                          ? 'Viaje colectivo'
+                          : 'Con paradas de servicio',
+                      style: CLODTextStyles.bodySmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -398,15 +432,63 @@ class _TarjetaSolicitudPendiente extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (paradas.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  for (final parada in paradas)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${parada.orden}. ',
+                            style: CLODTextStyles.bodySmall.copyWith(
+                              color: CLODColors.azulCLOD,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              '${parada.direccion} — '
+                              '${parada.esServicio ? "recoger/dejar paquete" : "recoger a otra persona"}',
+                              style: CLODTextStyles.bodySmall.copyWith(
+                                color: CLODColors.texto(
+                                  context,
+                                ).withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     if (tarifa != null)
-                      Text(
-                        '\$$tarifa MXN',
-                        style: CLODTextStyles.headingSmall.copyWith(
-                          color: CLODColors.azulCLOD,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '\$${(totalEstimado ?? (double.tryParse(tarifa) ?? 0) + (montoExtraParadas ?? 0)).toStringAsFixed(2)} MXN',
+                              style: CLODTextStyles.headingSmall.copyWith(
+                                color: CLODColors.azulCLOD,
+                              ),
+                            ),
+                            if (paradas.isNotEmpty && montoExtraParadas != null)
+                              Text(
+                                'Ruta \$$tarifa + ${paradas.length} '
+                                '${paradas.length == 1 ? "parada" : "paradas"} '
+                                '× extra',
+                                style: CLODTextStyles.bodySmall.copyWith(
+                                  color: CLODColors.texto(
+                                    context,
+                                  ).withValues(alpha: 0.5),
+                                ),
+                              ),
+                          ],
                         ),
                       )
                     else
