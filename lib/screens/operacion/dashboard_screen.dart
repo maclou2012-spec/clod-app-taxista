@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:typed_data';
-import 'dart:ui';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -8,19 +7,18 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/parada_viaje.dart';
 import '../../models/viaje_en_curso_args.dart';
+import '../../providers/disponibilidad_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/location_tracking_service.dart';
 import '../../services/socket_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../utils/mapa_utils.dart';
 import '../../widgets/clod_drawer.dart';
-import '../../widgets/dev_menu_button.dart';
-import '../../widgets/neumorphic_button.dart';
-import '../../widgets/neumorphic_card.dart';
-import '../../widgets/neumorphic_toggle.dart';
 
 String? _campoSolicitud(Map<String, dynamic> solicitud, List<String> llaves) {
   for (final llave in llaves) {
@@ -43,6 +41,14 @@ double? _campoDecimalSolicitud(
     }
   }
   return null;
+}
+
+int? _campoEnteroSolicitud(
+  Map<String, dynamic> solicitud,
+  List<String> llaves,
+) {
+  final decimal = _campoDecimalSolicitud(solicitud, llaves);
+  return decimal?.round();
 }
 
 // Las coordenadas pueden venir anidadas (solicitud['origen'] = {lat,lng}) o
@@ -69,6 +75,70 @@ double? _campoDecimalSolicitud(
   return (lat, lng);
 }
 
+String _formatearDistancia(double km) {
+  if (km < 1) return '${(km * 1000).round()} m';
+  return '${km.toStringAsFixed(1)} km';
+}
+
+/// Una celda de la capa de demanda, ya validada (lat/lng presentes).
+/// Pública y separada del `CircleAnnotationOptions` de Mapbox para poder
+/// probar el parseo de `obtenerZonasDemanda()` por unidad, sin un mapa real.
+class CeldaDemanda {
+  const CeldaDemanda({
+    required this.lat,
+    required this.lng,
+    required this.intensidad,
+  });
+
+  final double lat;
+  final double lng;
+  final double intensidad;
+}
+
+// La respuesta puede no traer 'celdas' (backend sin desplegar) o traer
+// celdas sin lat/lng (dato corrupto) — ambos casos se descartan en vez de
+// lanzar, igual que el resto del parseo defensivo de esta app.
+List<CeldaDemanda> celdasDemandaDesdeMapa(Map<String, dynamic>? datos) {
+  final celdas = datos?['celdas'];
+  if (celdas is! List) return const [];
+
+  final resultado = <CeldaDemanda>[];
+  for (final celda in celdas) {
+    if (celda is! Map<String, dynamic>) continue;
+    final lat = _campoDecimalSolicitud(celda, ['lat']);
+    final lng = _campoDecimalSolicitud(celda, ['lng']);
+    if (lat == null || lng == null) continue;
+    final intensidad = _campoDecimalSolicitud(celda, ['intensidad']) ?? 0.3;
+    resultado.add(
+      CeldaDemanda(lat: lat, lng: lng, intensidad: intensidad.clamp(0.05, 1.0)),
+    );
+  }
+  return resultado;
+}
+
+// Ausente (sin desplegar) o true -> se asume que sí hay suficiente, para no
+// mostrar "aún no hay información" de más mientras el backend no confirme
+// explícitamente lo contrario.
+bool suficienteDatosDemandaDesdeMapa(Map<String, dynamic>? datos) {
+  return datos?['suficiente_datos'] != false;
+}
+
+// Pura y separada de _DashboardScreenState para poder probarla por unidad:
+// nueva_solicitud agrega al principio (más reciente primero); una lista
+// fresca de /solicitudes reemplaza todo (así desaparecen solas las que ya
+// no estén disponibles, sin depender de un evento de "solicitud retirada"
+// que el backend no confirmó que exista todavía); nunca se duplica un id.
+List<Map<String, dynamic>> conNuevaSolicitudAlFrente(
+  List<Map<String, dynamic>> actuales,
+  Map<String, dynamic> nueva,
+) {
+  final idNueva = nueva['id'];
+  final sinDuplicado = actuales
+      .where((s) => s['id'] != idNueva || idNueva == null)
+      .toList();
+  return [nueva, ...sinDuplicado];
+}
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -79,20 +149,39 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final ApiService _apiService = ApiService();
   final SocketService _socketService = SocketService();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   bool _cargandoPerfil = true;
   String _nombre = '';
   String? _fotoPerfilUrl;
-  bool _disponible = false;
-  bool _cargandoDisponibilidad = false;
 
+  // --- KPIs del día (resumen-dia) -------------------------------------------
+  Map<String, dynamic>? _resumenDia;
+  Timer? _resumenDiaTimer;
+  static const Duration _intervaloResumenDia = Duration(minutes: 5);
+
+  // --- Lista de solicitudes en vivo ------------------------------------------
+  List<Map<String, dynamic>> _solicitudes = [];
+  StreamSubscription<Map<String, dynamic>>? _nuevaSolicitudSub;
+  Timer? _solicitudesPollTimer;
+  bool _detalleSolicitudVisible = false;
+  static const Duration _intervaloSolicitudes = Duration(seconds: 15);
+
+  // --- Mapa ------------------------------------------------------------------
   mapbox.MapboxMap? _mapboxMap;
   mapbox.PointAnnotationManager? _pointAnnotationManager;
   mapbox.PointAnnotation? _miUbicacionAnnotation;
   Uint8List? _iconoUbicacion;
   final LocationTrackingService _locationService = LocationTrackingService();
-  StreamSubscription<Map<String, dynamic>>? _nuevaSolicitudSub;
-  bool _solicitudVisible = false;
+  static const double _zoomInicial = 12;
+
+  // --- Capa de zonas de demanda ------------------------------------------
+  mapbox.CircleAnnotationManager? _demandaManager;
+  Map<String, dynamic>? _zonasDemanda;
+  Timer? _zonasDemandaTimer;
+  bool _mostrarCapaDemanda = true;
+  static const Duration _intervaloZonasDemanda = Duration(minutes: 5);
+  static const String _claveCapaDemanda = 'capa_demanda_visible';
 
   static final mapbox.Point _centroVeracruz = mapbox.Point(
     coordinates: mapbox.Position(-96.1342, 19.1738),
@@ -110,10 +199,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _cargarPerfil();
     _socketService.conectar();
-    _inicializarUbicacion();
+    _cargarPreferenciaCapaDemanda();
+    _inicializarUbicacionSiCorresponde();
     _locationService.posicionActual.addListener(_onPosicionActualizada);
     _nuevaSolicitudSub = _socketService.nuevaSolicitud.listen(
       _onNuevaSolicitud,
+    );
+    _cargarSolicitudesIniciales();
+    _solicitudesPollTimer = Timer.periodic(
+      _intervaloSolicitudes,
+      (_) => _refrescarSolicitudesSilencioso(),
+    );
+    _cargarResumenDia();
+    _resumenDiaTimer = Timer.periodic(
+      _intervaloResumenDia,
+      (_) => _cargarResumenDia(),
+    );
+    _cargarZonasDemanda();
+    _zonasDemandaTimer = Timer.periodic(
+      _intervaloZonasDemanda,
+      (_) => _cargarZonasDemanda(),
     );
   }
 
@@ -121,13 +226,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     // El socket y el seguimiento de ubicación se quedan vivos aunque el
     // usuario navegue a otra pantalla — solo se detienen al desactivar la
-    // disponibilidad, o el socket en un logout real (Bloque 5).
+    // disponibilidad (ver DisponibilidadProvider), o el socket en un
+    // logout real.
     _locationService.posicionActual.removeListener(_onPosicionActualizada);
     _nuevaSolicitudSub?.cancel();
+    _solicitudesPollTimer?.cancel();
+    _resumenDiaTimer?.cancel();
+    _zonasDemandaTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _inicializarUbicacion() async {
+  // --- Ubicación / mapa ------------------------------------------------------
+
+  // Disponible -> el GPS en vivo ya lo maneja DisponibilidadProvider
+  // (LocationTrackingService.iniciar/detener); aquí solo hace falta una
+  // lectura puntual para centrar el mapa la primera vez si todavía no hay
+  // ninguna posición conocida. No disponible -> UNA sola lectura puntual
+  // (nunca seguimiento continuo) o el centro de la ciudad si ni eso se
+  // pudo obtener.
+  Future<void> _inicializarUbicacionSiCorresponde() async {
+    if (_locationService.posicionActual.value != null) return;
+
     final servicioHabilitado = await Geolocator.isLocationServiceEnabled();
     if (!servicioHabilitado) return;
 
@@ -146,38 +265,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
           accuracy: LocationAccuracy.high,
         ),
       );
-      if (mounted && _locationService.posicionActual.value == null) {
+      if (!mounted) return;
+      // Si para cuando esto responde ya hay una posición (ej. se activó la
+      // disponibilidad y el stream en vivo ya trajo una), no la pisa.
+      if (_locationService.posicionActual.value == null) {
         _locationService.posicionActual.value = posicion;
+      } else {
+        await _sincronizarMapa(_locationService.posicionActual.value);
       }
     } catch (e) {
-      // Sin ubicación disponible por ahora; el mapa se queda centrado por
-      // defecto hasta que el GPS responda.
+      // El mapa se queda centrado en la ciudad por defecto.
     }
   }
 
   void _onPosicionActualizada() {
-    final posicion = _locationService.posicionActual.value;
-    if (posicion != null) {
-      _sincronizarMapa(posicion);
-    }
+    _sincronizarMapa(_locationService.posicionActual.value);
   }
 
   Future<void> _onMapaCreado(mapbox.MapboxMap mapboxMap) async {
     _mapboxMap = mapboxMap;
     _pointAnnotationManager = await mapboxMap.annotations
         .createPointAnnotationManager();
+    _demandaManager = await mapboxMap.annotations
+        .createCircleAnnotationManager();
     _iconoUbicacion = await generarIconoUbicacion();
-    final posicionConocida = _locationService.posicionActual.value;
-    if (posicionConocida != null) {
-      await _sincronizarMapa(posicionConocida);
-    }
+    await _sincronizarMapa(_locationService.posicionActual.value);
+    await _dibujarCapaDemanda();
   }
 
-  Future<void> _sincronizarMapa(Position posicion) async {
+  Future<void> _sincronizarMapa(Position? posicion) async {
     final punto = _puntoDesdePosicion(posicion);
 
     _mapboxMap?.flyTo(
-      mapbox.CameraOptions(center: punto),
+      mapbox.CameraOptions(center: punto, zoom: _zoomInicial),
       mapbox.MapAnimationOptions(duration: 500),
     );
 
@@ -196,23 +316,109 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _onNuevaSolicitud(Map<String, dynamic> solicitud) {
-    if (!mounted || _solicitudVisible) return;
-    _solicitudVisible = true;
+  // --- Zonas de demanda --------------------------------------------------
 
-    showModalBottomSheet<void>(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      builder: (sheetContext) => _TarjetaSolicitud(
-        solicitud: solicitud,
-        onIgnorar: () => Navigator.of(sheetContext).pop(),
-        onAceptar: () => _aceptarSolicitud(sheetContext, solicitud),
-      ),
-    ).whenComplete(() => _solicitudVisible = false);
+  Future<void> _cargarPreferenciaCapaDemanda() async {
+    final prefs = await SharedPreferences.getInstance();
+    final valor = prefs.getBool(_claveCapaDemanda);
+    if (valor != null && mounted) {
+      setState(() => _mostrarCapaDemanda = valor);
+      await _dibujarCapaDemanda();
+    }
   }
 
-  Future<void> _revisarSolicitudesPendientes() async {
+  Future<void> _alternarCapaDemanda() async {
+    setState(() => _mostrarCapaDemanda = !_mostrarCapaDemanda);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_claveCapaDemanda, _mostrarCapaDemanda);
+    await _dibujarCapaDemanda();
+  }
+
+  Future<void> _cargarZonasDemanda() async {
+    try {
+      final datos = await _apiService.obtenerZonasDemanda();
+      if (!mounted) return;
+      setState(() => _zonasDemanda = datos);
+      await _dibujarCapaDemanda();
+    } catch (e) {
+      // La capa es informativa — si falla, simplemente no se actualiza
+      // esta vez; el temporizador lo vuelve a intentar en 5 minutos.
+    }
+  }
+
+  // Borra y vuelve a crear SOLO las anotaciones de la capa (nunca el mapa
+  // ni sus demás managers) — así se "actualiza en sitio" sin el parpadeo
+  // de recrear el MapWidget completo.
+  Future<void> _dibujarCapaDemanda() async {
+    final manager = _demandaManager;
+    if (manager == null) return;
+    await manager.deleteAll();
+    if (!_mostrarCapaDemanda) return;
+
+    final celdas = celdasDemandaDesdeMapa(_zonasDemanda);
+    if (celdas.isEmpty) return;
+
+    final opciones = celdas
+        .map(
+          (celda) => mapbox.CircleAnnotationOptions(
+            geometry: mapbox.Point(
+              coordinates: mapbox.Position(celda.lng, celda.lat),
+            ),
+            circleColor: const Color(0xFF2ECC71).toARGB32(),
+            circleOpacity: celda.intensidad * 0.55,
+            circleRadius: 28,
+          ),
+        )
+        .toList();
+    await manager.createMulti(opciones);
+  }
+
+  // --- Solicitudes en vivo -----------------------------------------------
+
+  void _onNuevaSolicitud(Map<String, dynamic> solicitud) {
+    if (!mounted) return;
+    setState(
+      () => _solicitudes = conNuevaSolicitudAlFrente(_solicitudes, solicitud),
+    );
+  }
+
+  Future<Position?> _posicionParaSolicitudes() async {
+    final conocida = _locationService.posicionActual.value;
+    if (conocida != null) return conocida;
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> _cargarSolicitudesIniciales() async {
+    final posicion = await _posicionParaSolicitudes();
+    if (!mounted || posicion == null) return;
+    try {
+      final solicitudes = await _apiService.obtenerSolicitudesPendientes(
+        posicion.latitude,
+        posicion.longitude,
+      );
+      if (!mounted) return;
+      setState(
+        () => _solicitudes = solicitudes.cast<Map<String, dynamic>>().toList(),
+      );
+    } catch (e) {
+      // La lista simplemente se queda vacía hasta el próximo sondeo o un
+      // nuevo evento de socket — no es un error bloqueante para el panel.
+    }
+  }
+
+  // Reemplaza la lista completa con lo que el backend diga que sigue
+  // disponible AHORA — así desaparecen solas las solicitudes que ya
+  // tomó otro taxista o que expiraron, sin depender de un evento de
+  // "solicitud retirada" particular.
+  Future<void> _refrescarSolicitudesSilencioso() async {
     final posicion = _locationService.posicionActual.value;
     if (posicion == null) return;
     try {
@@ -220,13 +426,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         posicion.latitude,
         posicion.longitude,
       );
-      if (mounted && solicitudes.isNotEmpty) {
-        _onNuevaSolicitud(solicitudes.first as Map<String, dynamic>);
-      }
+      if (!mounted) return;
+      setState(
+        () => _solicitudes = solicitudes.cast<Map<String, dynamic>>().toList(),
+      );
     } catch (e) {
-      // Si falla, el taxista simplemente no ve la solicitud pendiente hasta
-      // que llegue una nueva por socket — no es un error bloqueante.
+      // Silencioso a propósito — el próximo sondeo lo reintenta.
     }
+  }
+
+  void _verDetalleSolicitud(Map<String, dynamic> solicitud) {
+    if (_detalleSolicitudVisible) return;
+    _detalleSolicitudVisible = true;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => _TarjetaSolicitud(
+        solicitud: solicitud,
+        onIgnorar: () => Navigator.of(sheetContext).pop(),
+        onAceptar: () => _aceptarSolicitud(sheetContext, solicitud),
+      ),
+    ).whenComplete(() => _detalleSolicitudVisible = false);
   }
 
   Future<void> _aceptarSolicitud(
@@ -294,6 +515,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? 'Otro taxista ya tomó esta solicitud.'
           : 'No se pudo aceptar la solicitud. Intenta de nuevo.';
       mensajeria.showSnackBar(SnackBar(content: Text(mensaje)));
+      if (e.response?.statusCode == 409) _refrescarSolicitudesSilencioso();
     } catch (e) {
       if (!mounted) return;
       navegadorHoja.pop();
@@ -305,20 +527,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // --- Perfil / KPIs -------------------------------------------------------
+
   Future<void> _cargarPerfil() async {
     try {
-      final resultados = await Future.wait([
-        _apiService.obtenerUsuarioActual(),
-        _apiService.obtenerMiPerfilTaxista(),
-      ]);
-      final usuario = resultados[0]['usuario'] as Map<String, dynamic>?;
-      final taxista = resultados[1]['taxista'] as Map<String, dynamic>?;
-      final disponibleRaw = taxista?['disponible'];
+      final resultado = await _apiService.obtenerUsuarioActual();
+      final usuario = resultado['usuario'] as Map<String, dynamic>?;
       if (mounted) {
         setState(() {
           _nombre = usuario?['nombre'] as String? ?? '';
           _fotoPerfilUrl = usuario?['foto_perfil_url'] as String?;
-          _disponible = disponibleRaw == true || disponibleRaw == 1;
           _cargandoPerfil = false;
         });
       }
@@ -329,264 +547,142 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _onToggleDisponibilidad(bool nuevoValor) async {
-    if (nuevoValor) {
-      await _activarConVerificacion();
-    } else {
-      await _cambiarDisponibilidad(false);
-    }
-  }
-
-  Future<void> _activarConVerificacion() async {
-    setState(() => _disponible = true);
-
-    final resultado = await context.push<bool>(
-      '/verificacion-facial',
-      extra: 'inicio_turno',
-    );
-
-    if (!mounted) return;
-
-    if (resultado == true) {
-      await _cambiarDisponibilidad(true);
-    } else {
-      setState(() => _disponible = false);
-    }
-  }
-
-  Future<void> _cambiarDisponibilidad(bool nuevoValor) async {
-    final valorAnterior = _disponible;
-    setState(() {
-      _disponible = nuevoValor;
-      _cargandoDisponibilidad = true;
-    });
-
+  Future<void> _cargarResumenDia() async {
     try {
-      await _apiService.cambiarDisponibilidad(nuevoValor);
-      if (nuevoValor) {
-        _socketService.emitirDisponible();
-        _locationService.iniciar();
-        _revisarSolicitudesPendientes();
-      } else {
-        _socketService.emitirNoDisponible();
-        _locationService.detener();
-      }
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      final mensaje = data is Map<String, dynamic>
-          ? data['mensaje'] as String?
-          : null;
-      if (mounted) {
-        setState(() => _disponible = valorAnterior);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              mensaje ?? 'No se pudo actualizar tu disponibilidad.',
-            ),
-          ),
-        );
-      }
+      final datos = await _apiService.obtenerResumenDia();
+      if (mounted) setState(() => _resumenDia = datos);
     } catch (e) {
-      if (mounted) {
-        setState(() => _disponible = valorAnterior);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No se pudo actualizar tu disponibilidad.'),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _cargandoDisponibilidad = false);
-      }
+      // Los KPI simplemente no se muestran esta vez.
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // PILOTO "clay": ClayContainer no necesita un theme ambiente (a
-    // diferencia del intento anterior con flutter_neumorphic_plus) — cada
-    // widget resuelve su color directo desde CLODColors, así que ya no
-    // hace falta envolver la pantalla en nada especial.
+    final disponibilidad = context.watch<DisponibilidadProvider>();
+    final alturaMaximaSolicitudes = MediaQuery.of(context).size.height * 0.4;
+
     return Scaffold(
-      // Sin leading/actions explícitos: Dashboard es la raíz tras iniciar
-      // sesión (nada que "atrás"), así que el leading automático de AppBar
-      // ya muestra el menú hamburguesa a la izquierda porque hay un
-      // Scaffold.drawer y no hay nada que hacer pop — Mi perfil ahora se
-      // alcanza desde ahí (Mi cuenta), no con un ícono aparte a la derecha.
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: CLODColors.fondoPantalla(context),
-        iconTheme: IconThemeData(color: CLODColors.texto(context)),
-      ),
+      key: _scaffoldKey,
       drawer: const ClodDrawer(),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: _cargandoPerfil
-                ? Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        CLODColors.azulCLOD,
-                      ),
+      body: SafeArea(
+        child: _cargandoPerfil
+            ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    CLODColors.azulCLOD,
+                  ),
+                ),
+              )
+            : Column(
+                children: [
+                  CabeceraDashboard(
+                    nombre: _nombre,
+                    fotoPerfilUrl: _fotoPerfilUrl,
+                    socketService: _socketService,
+                    resumenDia: _resumenDia,
+                    onAbrirMenu: () => _scaffoldKey.currentState?.openDrawer(),
+                  ),
+                  IndicadorDisponibilidadDashboard(
+                    disponible: disponibilidad.disponible,
+                    onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                  ),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: alturaMaximaSolicitudes,
                     ),
-                  )
-                : Column(
-                    children: [
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.4,
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: mapbox.MapWidget(
-                                viewport: mapbox.CameraViewportState(
-                                  center: _puntoDesdePosicion(
-                                    _locationService.posicionActual.value,
-                                  ),
-                                  zoom: 15,
-                                ),
-                                onMapCreated: _onMapaCreado,
+                    child: ListaSolicitudesDashboard(
+                      solicitudes: _solicitudes,
+                      onTap: _verDetalleSolicitud,
+                    ),
+                  ),
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: mapbox.MapWidget(
+                            viewport: mapbox.CameraViewportState(
+                              center: _puntoDesdePosicion(
+                                _locationService.posicionActual.value,
                               ),
+                              zoom: _zoomInicial,
                             ),
-                            Positioned(
-                              top: 12,
-                              left: 16,
-                              right: 16,
-                              child: _BarraSaludoVidrio(
-                                nombre: _nombre,
-                                fotoPerfilUrl: _fotoPerfilUrl,
-                                socketService: _socketService,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              NeumorphicCard(
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            'Disponibilidad voluntaria',
-                                            style: CLODTextStyles.bodyLarge,
-                                          ),
-                                        ),
-                                        NeumorphicToggle(
-                                          value: _disponible,
-                                          onChanged: _cargandoDisponibilidad
-                                              ? null
-                                              : _onToggleDisponibilidad,
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        _disponible
-                                            ? 'Conectado'
-                                            : 'Desconectado',
-                                        style: CLODTextStyles.bodySmall
-                                            .copyWith(
-                                              color: CLODColors.texto(
-                                                context,
-                                              ).withValues(alpha: 0.6),
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _TarjetaEstadistica(
-                                      etiqueta: 'Viajes hoy',
-                                      valor: '0',
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: _TarjetaEstadistica(
-                                      etiqueta: 'Estimado',
-                                      valor: '\$0',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              NeumorphicButton(
-                                label: 'Ver solicitudes',
-                                onPressed: () =>
-                                    context.push('/solicitudes-pendientes'),
-                              ),
-                              const SizedBox(height: 40),
-                              Text(
-                                'Tú decides cuándo conectarte y qué solicitudes tomar',
-                                textAlign: TextAlign.center,
-                                style: CLODTextStyles.bodySmall.copyWith(
-                                  color: CLODColors.texto(
-                                    context,
-                                  ).withValues(alpha: 0.5),
-                                ),
-                              ),
-                            ],
+                            onMapCreated: _onMapaCreado,
                           ),
                         ),
-                      ),
-                    ],
+                        Positioned(
+                          right: 12,
+                          top: 12,
+                          child: _BotonCapaDemanda(
+                            activa: _mostrarCapaDemanda,
+                            onTap: _alternarCapaDemanda,
+                          ),
+                        ),
+                        if (_mostrarCapaDemanda)
+                          Positioned(
+                            left: 12,
+                            right: 12,
+                            bottom: 12,
+                            child: LeyendaCapaDemanda(
+                              suficienteDatos: suficienteDatosDemandaDesdeMapa(
+                                _zonasDemanda,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-          ),
-          const DevMenuButton(),
-        ],
+                ],
+              ),
       ),
     );
   }
 }
 
-class _BarraSaludoVidrio extends StatelessWidget {
-  const _BarraSaludoVidrio({
+class CabeceraDashboard extends StatelessWidget {
+  const CabeceraDashboard({
+    super.key,
     required this.nombre,
     required this.fotoPerfilUrl,
     required this.socketService,
+    required this.resumenDia,
+    required this.onAbrirMenu,
   });
 
   final String nombre;
   final String? fotoPerfilUrl;
   final SocketService socketService;
+  final Map<String, dynamic>? resumenDia;
+  final VoidCallback onAbrirMenu;
 
   @override
   Widget build(BuildContext context) {
     final tieneFoto = fotoPerfilUrl != null && fotoPerfilUrl!.isNotEmpty;
-    final oscuro = Theme.of(context).brightness == Brightness.dark;
+    final viajesHoy = _campoEnteroSolicitud(resumenDia ?? const {}, [
+      'viajes_completados_hoy',
+    ]);
+    final gananciasHoy = _campoDecimalSolicitud(resumenDia ?? const {}, [
+      'ganancias_estimadas_hoy',
+    ]);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: (oscuro ? CLODColors.carbon : Colors.white).withValues(
-              alpha: 0.55,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: oscuro ? 0.08 : 0.5),
-            ),
-          ),
-          child: Row(
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: CLODColors.fondoPantalla(context),
+        border: Border(bottom: BorderSide(color: CLODColors.borde(context))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
+              IconButton(
+                icon: FaIcon(
+                  FontAwesomeIcons.bars,
+                  size: 18,
+                  color: CLODColors.texto(context),
+                ),
+                onPressed: onAbrirMenu,
+              ),
               CircleAvatar(
                 radius: 20,
                 backgroundColor: CLODColors.azulMarino,
@@ -621,7 +717,38 @@ class _BarraSaludoVidrio extends StatelessWidget {
               ),
             ],
           ),
-        ),
+          if (viajesHoy != null || gananciasHoy != null) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 48),
+              child: Row(
+                children: [
+                  if (viajesHoy != null)
+                    Text(
+                      '$viajesHoy ${viajesHoy == 1 ? "viaje" : "viajes"} hoy',
+                      style: CLODTextStyles.bodySmall.copyWith(
+                        color: CLODColors.texto(context).withValues(alpha: 0.6),
+                      ),
+                    ),
+                  if (viajesHoy != null && gananciasHoy != null)
+                    Text(
+                      '  ·  ',
+                      style: CLODTextStyles.bodySmall.copyWith(
+                        color: CLODColors.texto(context).withValues(alpha: 0.4),
+                      ),
+                    ),
+                  if (gananciasHoy != null)
+                    Text(
+                      '\$${gananciasHoy.toStringAsFixed(0)} estimadas',
+                      style: CLODTextStyles.bodySmall.copyWith(
+                        color: CLODColors.texto(context).withValues(alpha: 0.6),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -673,27 +800,276 @@ class _IndicadorConexionSocket extends StatelessWidget {
   }
 }
 
-class _TarjetaEstadistica extends StatelessWidget {
-  const _TarjetaEstadistica({required this.etiqueta, required this.valor});
+// Ya no abre/cierra la disponibilidad directo (eso vive en el switch del
+// drawer) — solo refleja el estado actual y, al tocarlo, abre el menú
+// donde está el switch real.
+class IndicadorDisponibilidadDashboard extends StatelessWidget {
+  const IndicadorDisponibilidadDashboard({
+    super.key,
+    required this.disponible,
+    required this.onTap,
+  });
 
-  final String etiqueta;
-  final String valor;
+  final bool disponible;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicCard(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      child: Column(
-        children: [
-          Text(valor, style: CLODTextStyles.headingMedium),
-          const SizedBox(height: 4),
-          Text(
-            etiqueta,
-            style: CLODTextStyles.bodySmall.copyWith(
-              color: CLODColors.texto(context).withValues(alpha: 0.6),
+    final color = disponible
+        ? CLODColors.azulCLOD
+        : CLODColors.texto(context).withValues(alpha: 0.4);
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: CLODColors.fondoPantalla(context),
+          border: Border(bottom: BorderSide(color: CLODColors.borde(context))),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
+            const SizedBox(width: 10),
+            Text(
+              disponible ? 'Disponible' : 'No disponible',
+              style: CLODTextStyles.bodyMedium.copyWith(
+                color: CLODColors.texto(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: CLODColors.texto(context).withValues(alpha: 0.4),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ListaSolicitudesDashboard extends StatelessWidget {
+  const ListaSolicitudesDashboard({
+    super.key,
+    required this.solicitudes,
+    required this.onTap,
+  });
+
+  final List<Map<String, dynamic>> solicitudes;
+  final ValueChanged<Map<String, dynamic>> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (solicitudes.isEmpty) {
+      // Compacto a propósito — deja el resto de la altura disponible para
+      // el mapa en vez de ocupar el 40% completo con un estado vacío.
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Text(
+          'Sin solicitudes disponibles por ahora.',
+          style: CLODTextStyles.bodySmall.copyWith(
+            color: CLODColors.texto(context).withValues(alpha: 0.5),
           ),
-        ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(12),
+      itemCount: solicitudes.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final solicitud = solicitudes[index];
+        return _FilaSolicitud(
+          solicitud: solicitud,
+          onTap: () => onTap(solicitud),
+        );
+      },
+    );
+  }
+}
+
+class _FilaSolicitud extends StatelessWidget {
+  const _FilaSolicitud({required this.solicitud, required this.onTap});
+
+  final Map<String, dynamic> solicitud;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final origen =
+        _campoSolicitud(solicitud, [
+          'origen_direccion',
+          'direccion_origen',
+          'origen',
+        ]) ??
+        '—';
+    final tarifa = _campoSolicitud(solicitud, ['tarifa_ofrecida', 'tarifa']);
+    final distanciaKm = _campoDecimalSolicitud(solicitud, ['distancia_km']);
+    final tipoViaje = tipoViajeDesdeMapa(solicitud);
+    final paradas = paradasDesdeMapa(solicitud);
+    final montoExtraParadas = _campoDecimalSolicitud(solicitud, [
+      'monto_extra_paradas',
+    ]);
+    final totalEstimado = _campoDecimalSolicitud(solicitud, [
+      'total_estimado',
+      'monto_total',
+    ]);
+    final montoFinal =
+        totalEstimado ??
+        (tarifa != null
+            ? (double.tryParse(tarifa) ?? 0) + (montoExtraParadas ?? 0)
+            : null);
+
+    return Material(
+      color: CLODColors.azulMarino.withValues(alpha: 0.2),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (tipoViaje != 'normal')
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: CLODColors.azulMarino.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          tipoViaje == 'colectivo' ? 'Colectivo' : 'Paradas',
+                          style: CLODTextStyles.bodySmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  Expanded(
+                    child: Text(
+                      origen,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: CLODTextStyles.bodyMedium.copyWith(
+                        color: CLODColors.texto(context),
+                      ),
+                    ),
+                  ),
+                  if (distanciaKm != null) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatearDistancia(distanciaKm),
+                      style: CLODTextStyles.bodySmall.copyWith(
+                        color: CLODColors.azulCLOD,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (paradas.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '${paradas.length} ${paradas.length == 1 ? "parada" : "paradas"}',
+                  style: CLODTextStyles.bodySmall.copyWith(
+                    color: CLODColors.texto(context).withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
+              if (montoFinal != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '\$${montoFinal.toStringAsFixed(2)} MXN (referencia)',
+                  style: CLODTextStyles.bodyMedium.copyWith(
+                    color: CLODColors.azulCLOD,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BotonCapaDemanda extends StatelessWidget {
+  const _BotonCapaDemanda({required this.activa, required this.onTap});
+
+  final bool activa;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final oscuro = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: (oscuro ? CLODColors.carbon : Colors.white).withValues(
+        alpha: 0.85,
+      ),
+      shape: const CircleBorder(),
+      elevation: 2,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(
+            Icons.layers_outlined,
+            size: 20,
+            color: activa
+                ? const Color(0xFF2ECC71)
+                : CLODColors.texto(context).withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class LeyendaCapaDemanda extends StatelessWidget {
+  const LeyendaCapaDemanda({super.key, required this.suficienteDatos});
+
+  final bool suficienteDatos;
+
+  @override
+  Widget build(BuildContext context) {
+    final oscuro = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: (oscuro ? CLODColors.carbon : Colors.white).withValues(
+          alpha: 0.9,
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        suficienteDatos
+            ? 'Zonas con más solicitudes en este día y horario '
+                  '(información histórica)'
+            : 'Aún no hay suficiente información de demanda',
+        textAlign: TextAlign.center,
+        style: CLODTextStyles.bodySmall.copyWith(
+          color: CLODColors.texto(context).withValues(alpha: 0.7),
+        ),
       ),
     );
   }
@@ -745,7 +1121,7 @@ class _TarjetaSolicitud extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Nueva solicitud',
+              'Solicitud de viaje',
               textAlign: TextAlign.center,
               style: CLODTextStyles.headingMedium,
             ),

@@ -122,14 +122,25 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
       builder: (context, child) {
+        // Antes forzaba ColorScheme.light siempre — el selector de fecha
+        // salía claro aunque el resto de la app estuviera en modo oscuro
+        // (el modo por defecto de esta app). Ahora respeta el tema activo.
+        final oscuro = Theme.of(context).brightness == Brightness.dark;
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: CLODColors.azulCLOD,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: CLODColors.carbon,
-            ),
+            colorScheme: oscuro
+                ? ColorScheme.dark(
+                    primary: CLODColors.azulCLOD,
+                    onPrimary: Colors.white,
+                    surface: CLODColors.carbon,
+                    onSurface: CLODColors.grisClaro,
+                  )
+                : ColorScheme.light(
+                    primary: CLODColors.azulCLOD,
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: CLODColors.carbon,
+                  ),
           ),
           child: child!,
         );

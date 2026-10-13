@@ -141,4 +141,173 @@ void main() {
       expect(direccionesParadasPendientesDesde('no es un mapa'), isEmpty);
     });
   });
+
+  group('siguientePasoDesdeMapa', () {
+    test('toma el valor tal cual si viene', () {
+      expect(siguientePasoDesdeMapa({'siguiente_paso': 'parada'}), 'parada');
+      expect(siguientePasoDesdeMapa({'siguiente_paso': 'destino'}), 'destino');
+      expect(
+        siguientePasoDesdeMapa({'siguiente_paso': 'completar'}),
+        'completar',
+      );
+    });
+
+    test('sin la llave -> null (backend sin desplegar todavía)', () {
+      expect(siguientePasoDesdeMapa({}), isNull);
+    });
+  });
+
+  group('paradaActualIdDesdeMapa', () {
+    test('id plano', () {
+      expect(paradaActualIdDesdeMapa({'parada_actual': 7}), 7);
+    });
+
+    test('objeto completo con id adentro', () {
+      expect(
+        paradaActualIdDesdeMapa({
+          'parada_actual': {'id': 9, 'orden': 2},
+        }),
+        9,
+      );
+    });
+
+    test('ausente -> null', () {
+      expect(paradaActualIdDesdeMapa({}), isNull);
+    });
+  });
+
+  group('pasoViajeEnCursoDesde', () {
+    ParadaViaje parada(int id, String estado) => ParadaViaje(
+      id: id,
+      orden: id,
+      tipo: 'servicio',
+      direccion: 'Parada $id',
+      estado: estado,
+    );
+
+    test('siguiente_paso del backend manda siempre, sin importar las paradas', () {
+      expect(
+        pasoViajeEnCursoDesde(
+          siguientePaso: 'parada',
+          paradas: const [],
+          tipoViaje: 'normal',
+        ),
+        PasoViajeEnCurso.parada,
+      );
+      expect(
+        pasoViajeEnCursoDesde(
+          siguientePaso: 'destino',
+          paradas: [parada(1, 'pendiente')],
+          tipoViaje: 'paradas_servicio',
+        ),
+        PasoViajeEnCurso.destino,
+      );
+      expect(
+        pasoViajeEnCursoDesde(
+          siguientePaso: 'completar',
+          paradas: [parada(1, 'pendiente')],
+          tipoViaje: 'paradas_servicio',
+        ),
+        PasoViajeEnCurso.completar,
+      );
+    });
+
+    test('un valor no reconocido -> inconsistente (nunca se adivina)', () {
+      expect(
+        pasoViajeEnCursoDesde(
+          siguientePaso: 'algo_nuevo_que_no_existe_todavia',
+          paradas: const [],
+          tipoViaje: 'normal',
+        ),
+        PasoViajeEnCurso.inconsistente,
+      );
+    });
+
+    group('sin siguiente_paso (backend viejo) — deriva localmente', () {
+      test('viaje normal (0 paradas) -> destino', () {
+        expect(
+          pasoViajeEnCursoDesde(
+            siguientePaso: null,
+            paradas: const [],
+            tipoViaje: 'normal',
+          ),
+          PasoViajeEnCurso.destino,
+        );
+      });
+
+      test('1 parada pendiente -> parada', () {
+        expect(
+          pasoViajeEnCursoDesde(
+            siguientePaso: null,
+            paradas: [parada(1, 'pendiente')],
+            tipoViaje: 'paradas_servicio',
+          ),
+          PasoViajeEnCurso.parada,
+        );
+      });
+
+      test('1 parada ya completada -> destino', () {
+        expect(
+          pasoViajeEnCursoDesde(
+            siguientePaso: null,
+            paradas: [parada(1, 'completada')],
+            tipoViaje: 'paradas_servicio',
+          ),
+          PasoViajeEnCurso.destino,
+        );
+      });
+
+      test('2 paradas, la primera completada y la segunda pendiente -> parada', () {
+        expect(
+          pasoViajeEnCursoDesde(
+            siguientePaso: null,
+            paradas: [parada(1, 'completada'), parada(2, 'pendiente')],
+            tipoViaje: 'colectivo',
+          ),
+          PasoViajeEnCurso.parada,
+        );
+      });
+
+      test('2 paradas, ambas resueltas (una omitida) -> destino', () {
+        expect(
+          pasoViajeEnCursoDesde(
+            siguientePaso: null,
+            paradas: [parada(1, 'completada'), parada(2, 'omitida')],
+            tipoViaje: 'colectivo',
+          ),
+          PasoViajeEnCurso.destino,
+        );
+      });
+
+      test('3 paradas: solo la última pendiente -> parada', () {
+        expect(
+          pasoViajeEnCursoDesde(
+            siguientePaso: null,
+            paradas: [
+              parada(1, 'completada'),
+              parada(2, 'omitida'),
+              parada(3, 'pendiente'),
+            ],
+            tipoViaje: 'colectivo',
+          ),
+          PasoViajeEnCurso.parada,
+        );
+      });
+
+      test('3 paradas, las 3 resueltas -> destino', () {
+        expect(
+          pasoViajeEnCursoDesde(
+            siguientePaso: null,
+            paradas: [
+              parada(1, 'completada'),
+              parada(2, 'omitida'),
+              parada(3, 'completada'),
+            ],
+            tipoViaje: 'colectivo',
+          ),
+          PasoViajeEnCurso.destino,
+        );
+      });
+    });
+  });
 }

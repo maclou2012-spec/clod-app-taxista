@@ -1,181 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
-import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
-import '../../models/parada_viaje.dart';
-import '../../providers/theme_provider.dart';
-import '../../services/api_service.dart';
-import '../../services/secure_storage_service.dart';
-import '../../services/socket_service.dart';
-import '../../theme/clod_theme.dart';
-import '../../widgets/clod_app_bar.dart';
-import '../../widgets/clod_drawer.dart';
+import '../models/parada_viaje.dart';
+import '../services/api_service.dart';
+import '../theme/clod_theme.dart';
 
-class ConfiguracionScreen extends StatelessWidget {
-  const ConfiguracionScreen({super.key});
-
-  Future<void> _cerrarSesion(BuildContext context) async {
-    await SecureStorageService().borrarTokens();
-    SocketService().desconectar();
-    if (context.mounted) {
-      context.go('/telefono');
-    }
-  }
+/// Switches y montos extra de "paradas de servicio" y "viaje colectivo" —
+/// antes vivía en ConfiguracionScreen (ya eliminada), ahora se usa como una
+/// sección dentro de TarifaScreen ("Mi tarifa"). Misma lógica, textos y
+/// guardado de siempre, solo que ahora es un widget público reutilizable en
+/// vez de una clase privada de esa pantalla.
+class SeccionServiciosAdicionales extends StatefulWidget {
+  const SeccionServiciosAdicionales({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const ClodAppBar(titulo: 'Configuración'),
-      drawer: const ClodDrawer(),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _FilaConfiguracion(
-                      icono: Icons.emergency_outlined,
-                      titulo: 'Contacto de emergencia',
-                      onTap: () =>
-                          context.push('/configuracion/contacto-emergencia'),
-                    ),
-                    const SizedBox(height: 12),
-                    _FilaConfiguracion(
-                      icono: Icons.description_outlined,
-                      titulo: 'Contrato de licenciatario',
-                      onTap: () => context.push('/contrato', extra: true),
-                    ),
-                    const SizedBox(height: 12),
-                    const _FilaModoOscuro(),
-                    const SizedBox(height: 28),
-                    const _SeccionServiciosAdicionales(),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Divider(color: CLODColors.borde(context)),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () => _cerrarSesion(context),
-                    child: Text(
-                      'Cerrar sesión',
-                      style: CLODTextStyles.bodyLarge.copyWith(
-                        color: CLODColors.rojoUbicacion,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FilaConfiguracion extends StatelessWidget {
-  const _FilaConfiguracion({
-    required this.icono,
-    required this.titulo,
-    required this.onTap,
-  });
-
-  final IconData icono;
-  final String titulo;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: CLODColors.fondoTarjeta(context),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: CLODColors.borde(context)),
-        ),
-        child: Row(
-          children: [
-            Icon(icono, size: 20, color: CLODColors.azulCLOD),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                titulo,
-                style: CLODTextStyles.bodyLarge.copyWith(
-                  color: CLODColors.texto(context),
-                ),
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: CLODColors.texto(context).withValues(alpha: 0.4),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FilaModoOscuro extends StatelessWidget {
-  const _FilaModoOscuro();
-
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = context.watch<ThemeProvider>();
-    final activo = themeProvider.modo == ThemeMode.dark;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: CLODColors.fondoTarjeta(context),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: CLODColors.borde(context)),
-      ),
-      child: SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        value: activo,
-        onChanged: (_) => context.read<ThemeProvider>().alternar(),
-        activeTrackColor: CLODColors.azulCLOD,
-        secondary: Icon(
-          Icons.dark_mode_outlined,
-          size: 20,
-          color: CLODColors.azulCLOD,
-        ),
-        title: Text(
-          'Modo oscuro',
-          style: CLODTextStyles.bodyLarge.copyWith(
-            color: CLODColors.texto(context),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SeccionServiciosAdicionales extends StatefulWidget {
-  const _SeccionServiciosAdicionales();
-
-  @override
-  State<_SeccionServiciosAdicionales> createState() =>
+  State<SeccionServiciosAdicionales> createState() =>
       _SeccionServiciosAdicionalesState();
 }
 
 class _SeccionServiciosAdicionalesState
-    extends State<_SeccionServiciosAdicionales> {
+    extends State<SeccionServiciosAdicionales> {
   final ApiService _apiService = ApiService();
 
   bool _cargando = true;

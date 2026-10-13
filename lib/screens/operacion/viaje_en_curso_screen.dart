@@ -166,6 +166,13 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
   late final String _tipoViaje = widget.args.tipoViaje;
   late List<ParadaViaje> _paradas = widget.args.paradas;
   int? _paradaEnAccionId;
+
+  // Autoridad del backend sobre qué sigue (prompt 21) — ver
+  // pasoViajeEnCursoDesde en parada_viaje.dart. Null hasta el primer
+  // /detalle (o si el backend todavía no lo manda), en cuyo caso se deriva
+  // localmente de _paradas.
+  String? _siguientePaso;
+  int? _paradaActualIdBackend;
   StreamSubscription<Map<String, dynamic>>? _paradaLlegadaSub;
   StreamSubscription<Map<String, dynamic>>? _paradaCompletadaSub;
 
@@ -273,11 +280,21 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
     _actualizarParadasDesde(detalle);
   }
 
+  // A diferencia de la versión anterior, siguiente_paso/parada_actual se
+  // actualizan SIEMPRE que llega un /detalle, incluso si `paradas` viene
+  // vacío en esta respuesta en particular — son la fuente de verdad del
+  // paso actual, no deben quedarse pegados a un valor viejo solo porque
+  // esta respuesta puntual no trajo la lista completa de paradas.
   void _actualizarParadasDesde(Map<String, dynamic> detalle) {
     final paradas = paradasDesdeMapa(detalle);
-    if (paradas.isEmpty) return;
+    final siguientePaso = siguientePasoDesdeMapa(detalle);
+    final paradaActualId = paradaActualIdDesdeMapa(detalle);
     if (!mounted) return;
-    setState(() => _paradas = paradas);
+    setState(() {
+      if (paradas.isNotEmpty) _paradas = paradas;
+      _siguientePaso = siguientePaso;
+      _paradaActualIdBackend = paradaActualId;
+    });
   }
 
   // Tras un 409 de "completar"/"finalizar sin confirmación", el estado del
@@ -770,16 +787,27 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
   // --- Paradas de servicio / viaje colectivo --------------------------------
 
   // La próxima parada sin resolver — resaltada en la lista y la única con
-  // botones de acción. Las demás, futuras, solo se listan.
+  // botones de acción. Las demás, futuras, solo se listan. Prefiere el
+  // parada_actual que manda el backend (prompt 21); si no vino, o no
+  // coincide con ningún id de _paradas, cae a la primera sin resolver.
   ParadaViaje? get _paradaActual {
+    final idBackend = _paradaActualIdBackend;
+    if (idBackend != null) {
+      for (final parada in _paradas) {
+        if (parada.id == idBackend) return parada;
+      }
+    }
     for (final parada in _paradas) {
       if (!parada.completadaUOmitida) return parada;
     }
     return null;
   }
 
-  bool get _todasLasParadasResueltas =>
-      _paradas.every((parada) => parada.completadaUOmitida);
+  PasoViajeEnCurso get _pasoActual => pasoViajeEnCursoDesde(
+    siguientePaso: _siguientePaso,
+    paradas: _paradas,
+    tipoViaje: _tipoViaje,
+  );
 
   Future<void> _marcarLlegadaParada(ParadaViaje parada) async {
     setState(() => _paradaEnAccionId = parada.id);
@@ -1081,61 +1109,20 @@ class _ViajeEnCursoScreenState extends State<ViajeEnCursoScreen>
               onCancelar: _cancelando ? null : _mostrarDialogoCancelar,
               cancelando: _cancelando,
             ),
-            _EstadoViajeTaxista.enCurso => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_tipoViaje != 'normal' && _paradas.isNotEmpty) ...[
-                  _ListaParadas(
-                    paradas: _paradas,
-                    paradaActualId: _paradaActual?.id,
-                    accionEnCursoId: _paradaEnAccionId,
-                    onLlegue: _marcarLlegadaParada,
-                    onCompletar: _completarParada,
-                    onOmitir: _confirmarYOmitirParada,
-                  ),
-                  const SizedBox(height: 16),
-                  if (_paradasPendientesConCoordenadas.isNotEmpty) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _abrirGoogleMapsConParadas,
-                        icon: Icon(
-                          Icons.map_outlined,
-                          color: CLODColors.azulCLOD,
-                        ),
-                        label: Text(
-                          'Abrir en Google Maps (con paradas)',
-                          style: CLODTextStyles.bodyLarge.copyWith(
-                            color: CLODColors.azulCLOD,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: CLODColors.azulCLOD.withValues(alpha: 0.5),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Waze no admite varias paradas — el botón de arriba '
-                      'te lleva solo a la siguiente.',
-                      textAlign: TextAlign.center,
-                      style: CLODTextStyles.bodySmall.copyWith(
-                        color: CLODColors.texto(context).withValues(alpha: 0.5),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ],
-                CLODPrimaryButton(
-                  label: 'Completar viaje',
-                  cargando: _completando,
-                  habilitado: _tipoViaje == 'normal' || _todasLasParadasResueltas,
-                  onPressed: _tocarCompletarViaje,
-                ),
-              ],
+            _EstadoViajeTaxista.enCurso => SeccionViajeEnCursoConParadas(
+              paso: _pasoActual,
+              paradas: _paradas,
+              paradaActualId: _paradaActual?.id,
+              accionEnCursoId: _paradaEnAccionId,
+              paradasPendientesConCoordenadas: _paradasPendientesConCoordenadas,
+              completando: _completando,
+              onLlegue: _marcarLlegadaParada,
+              onCompletarParada: _completarParada,
+              onOmitir: _confirmarYOmitirParada,
+              onAbrirGoogleMaps: _abrirGoogleMapsConParadas,
+              onLlegarDestino: _tocarCompletarViaje,
+              onCompletarViaje: _finalizarSinConfirmacion,
+              onActualizar: _consultarDetallePeriodico,
             ),
             _EstadoViajeTaxista.esperandoConfirmacion =>
               _SeccionEsperandoConfirmacion(
@@ -1631,6 +1618,125 @@ class _SeccionEsperandoConfirmacion extends StatelessWidget {
           onPressed: onFinalizarSinConfirmacion,
         ),
       ],
+    );
+  }
+}
+
+// Máquina de estados guiada por PasoViajeEnCurso (ver pasoViajeEnCursoDesde
+// en parada_viaje.dart) — SIEMPRE hay exactamente una acción disponible:
+// la lista de paradas con sus botones ('parada'), "Llegué al destino" con
+// verificación de ubicación ('destino', mismo flujo que ya existía),
+// "Completar viaje" directo ('completar'), o "Actualizar" para
+// resincronizar con /detalle si el paso no se pudo determinar
+// ('inconsistente') — nunca se queda sin ningún botón.
+class SeccionViajeEnCursoConParadas extends StatelessWidget {
+  const SeccionViajeEnCursoConParadas({
+    super.key,
+    required this.paso,
+    required this.paradas,
+    required this.paradaActualId,
+    required this.accionEnCursoId,
+    required this.paradasPendientesConCoordenadas,
+    required this.completando,
+    required this.onLlegue,
+    required this.onCompletarParada,
+    required this.onOmitir,
+    required this.onAbrirGoogleMaps,
+    required this.onLlegarDestino,
+    required this.onCompletarViaje,
+    required this.onActualizar,
+  });
+
+  final PasoViajeEnCurso paso;
+  final List<ParadaViaje> paradas;
+  final int? paradaActualId;
+  final int? accionEnCursoId;
+  final List<ParadaViaje> paradasPendientesConCoordenadas;
+  final bool completando;
+  final void Function(ParadaViaje) onLlegue;
+  final void Function(ParadaViaje) onCompletarParada;
+  final void Function(ParadaViaje) onOmitir;
+  final VoidCallback onAbrirGoogleMaps;
+  final VoidCallback onLlegarDestino;
+  final VoidCallback onCompletarViaje;
+  final VoidCallback onActualizar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: switch (paso) {
+        PasoViajeEnCurso.parada => [
+          _ListaParadas(
+            paradas: paradas,
+            paradaActualId: paradaActualId,
+            accionEnCursoId: accionEnCursoId,
+            onLlegue: onLlegue,
+            onCompletar: onCompletarParada,
+            onOmitir: onOmitir,
+          ),
+          const SizedBox(height: 16),
+          if (paradasPendientesConCoordenadas.isNotEmpty) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onAbrirGoogleMaps,
+                icon: Icon(Icons.map_outlined, color: CLODColors.azulCLOD),
+                label: Text(
+                  'Abrir en Google Maps (con paradas)',
+                  style: CLODTextStyles.bodyLarge.copyWith(
+                    color: CLODColors.azulCLOD,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: CLODColors.azulCLOD.withValues(alpha: 0.5),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Waze no admite varias paradas — el botón de arriba '
+              'te lleva solo a la siguiente.',
+              textAlign: TextAlign.center,
+              style: CLODTextStyles.bodySmall.copyWith(
+                color: CLODColors.texto(context).withValues(alpha: 0.5),
+              ),
+            ),
+          ],
+        ],
+        PasoViajeEnCurso.destino => [
+          CLODPrimaryButton(
+            label: 'Llegué al destino',
+            cargando: completando,
+            onPressed: onLlegarDestino,
+          ),
+        ],
+        PasoViajeEnCurso.completar => [
+          CLODPrimaryButton(
+            label: 'Completar viaje',
+            cargando: completando,
+            onPressed: onCompletarViaje,
+          ),
+        ],
+        PasoViajeEnCurso.inconsistente => [
+          Text(
+            'No se pudo determinar el siguiente paso del viaje.',
+            textAlign: TextAlign.center,
+            style: CLODTextStyles.bodyMedium.copyWith(
+              color: CLODColors.texto(context).withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 12),
+          CLODPrimaryButton(
+            label: 'Actualizar',
+            cargando: completando,
+            onPressed: onActualizar,
+          ),
+        ],
+      },
     );
   }
 }

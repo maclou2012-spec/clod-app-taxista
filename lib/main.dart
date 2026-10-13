@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'config/mapbox_config.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
+import 'providers/disponibilidad_provider.dart';
 import 'providers/theme_provider.dart';
 import 'routes/app_router.dart';
 import 'theme/clod_theme.dart';
@@ -37,6 +38,13 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
         ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
+        // No se carga el estado inicial aquí (a diferencia de ThemeProvider)
+        // porque en este punto todavía no hay sesión iniciada —
+        // DashboardScreen llama a cargarEstadoInicial() una sola vez al
+        // entrar, ya con el taxista autenticado.
+        ChangeNotifierProvider<DisponibilidadProvider>(
+          create: (_) => DisponibilidadProvider(),
+        ),
       ],
       child: Builder(
         builder: (context) {

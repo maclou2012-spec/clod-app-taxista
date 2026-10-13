@@ -196,7 +196,8 @@ class _DatosFiscalesScreenState extends State<DatosFiscalesScreen> {
       ),
       decoration: InputDecoration(
         filled: true,
-        fillColor: Colors.white,
+        // Antes blanco fijo — caja clara encima del fondo oscuro del tema.
+        fillColor: CLODColors.fondoTarjeta(context),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: CLODColors.borde(context)),

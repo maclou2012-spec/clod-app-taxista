@@ -225,7 +225,10 @@ class _ChipSeleccionable extends StatelessWidget {
         child: Text(
           texto,
           style: CLODTextStyles.bodyMedium.copyWith(
-            color: seleccionado ? Colors.white : CLODColors.carbon,
+            // Antes era CLODColors.carbon fijo: texto oscuro invisible
+            // sobre el fondo de tarjeta oscuro del chip sin seleccionar en
+            // modo oscuro.
+            color: seleccionado ? Colors.white : CLODColors.texto(context),
           ),
         ),
       ),

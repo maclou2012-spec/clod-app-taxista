@@ -7,6 +7,7 @@ import '../../theme/clod_theme.dart';
 import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
 import '../../widgets/clod_text_field.dart';
+import '../../widgets/seccion_servicios_adicionales.dart';
 
 class TarifaScreen extends StatefulWidget {
   const TarifaScreen({super.key, this.datosIniciales});
@@ -237,7 +238,13 @@ class _TarifaScreenState extends State<TarifaScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F7FC),
+                  // Antes un azul clarito fijo (#F0F7FC) — se quedaba pálido
+                  // y chocaba con el fondo oscuro del tema.
+                  color: CLODColors.azulCLOD.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.18
+                        : 0.08,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: CLODColors.azulCLOD),
                 ),
@@ -263,6 +270,16 @@ class _TarifaScreenState extends State<TarifaScreen> {
                 habilitado: _formularioValido,
                 onPressed: _onContinuar,
               ),
+              // Solo en modo edición (Mi cuenta -> Mi tarifa), no durante
+              // el registro inicial — un taxista todavía sin aprobar no
+              // necesita decidir esto antes de tener perfil activo. Antes
+              // vivía en Configuración (ya eliminada).
+              if (_modoEdicion) ...[
+                const SizedBox(height: 40),
+                Divider(color: CLODColors.borde(context)),
+                const SizedBox(height: 24),
+                const SeccionServiciosAdicionales(),
+              ],
               const SizedBox(height: 32),
             ],
           ),

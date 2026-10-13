@@ -1,16 +1,22 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../routes/app_router.dart';
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
 import '../../widgets/clod_app_bar.dart';
 import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_error_text.dart';
 
+/// "Mis datos personales" — se alcanza tocando la foto/nombre en el
+/// encabezado del menú deslizable. Antes se llamaba "Mi perfil" y además
+/// tenía una lista de accesos (Mi vehículo, Mi tarifa, Mis documentos,
+/// Historial, Mis pagos, Mis referidos, Configuración, Ayuda) que ahora
+/// viven en el menú mismo (Mi cuenta) o ya estaban duplicados como ítems
+/// de primer nivel del drawer — ver el reporte de la tarea para el mapeo
+/// completo. Esta pantalla ahora solo tiene lo que le era propio: la foto
+/// y el nombre/clase del taxista.
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
 
@@ -18,7 +24,7 @@ class PerfilScreen extends StatefulWidget {
   State<PerfilScreen> createState() => _PerfilScreenState();
 }
 
-class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
+class _PerfilScreenState extends State<PerfilScreen> {
   final ApiService _apiService = ApiService();
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -28,35 +34,10 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
   String? _claseNombre;
   String? _fotoPerfilUrl;
   bool _subiendoFoto = false;
-  Map<String, dynamic>? _taxista;
-  Map<String, dynamic>? _vehiculo;
 
   @override
   void initState() {
     super.initState();
-    _cargarDatos();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final route = ModalRoute.of(context);
-    if (route is PageRoute) {
-      routeObserver.subscribe(this, route);
-    }
-  }
-
-  @override
-  void dispose() {
-    routeObserver.unsubscribe(this);
-    super.dispose();
-  }
-
-  // Se vuelve a cargar el vehículo/taxista al regresar de "Mi vehículo" para
-  // que número de taxi, foto y demás cambios recién guardados no se vean
-  // como si no hubieran quedado, aunque _cargando ya no muestre el spinner.
-  @override
-  void didPopNext() {
     _cargarDatos();
   }
 
@@ -66,7 +47,6 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
         _apiService.obtenerUsuarioActual(),
         _apiService.obtenerMiPerfilTaxista(),
         _apiService.obtenerClasesServicio(),
-        _apiService.obtenerVehiculo(),
       ]);
 
       final usuario =
@@ -77,7 +57,6 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
               as Map<String, dynamic>?;
       final clases = (resultados[2] as List<dynamic>)
           .cast<Map<String, dynamic>>();
-      final vehiculo = resultados[3] as Map<String, dynamic>?;
 
       final claseId = taxista?['clase_id'];
       final clase = clases.firstWhere(
@@ -90,8 +69,6 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
           _nombre = usuario?['nombre'] as String? ?? '';
           _claseNombre = clase['nombre'] as String?;
           _fotoPerfilUrl = usuario?['foto_perfil_url'] as String?;
-          _taxista = taxista;
-          _vehiculo = vehiculo;
           _cargando = false;
         });
       }
@@ -173,7 +150,7 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const ClodAppBar(titulo: 'Mi perfil'),
+      appBar: const ClodAppBar(titulo: 'Mis datos personales'),
       drawer: const ClodDrawer(),
       body: SafeArea(
         child: _cargando
@@ -221,103 +198,9 @@ class _PerfilScreenState extends State<PerfilScreen> with RouteAware {
                         color: CLODColors.texto(context).withValues(alpha: 0.6),
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    _FilaAcceso(
-                      icono: Icons.directions_car,
-                      titulo: 'Mi vehículo',
-                      onTap: () => context.push('/vehiculo', extra: _vehiculo),
-                    ),
-                    const SizedBox(height: 12),
-                    _FilaAcceso(
-                      icono: Icons.attach_money,
-                      titulo: 'Mi tarifa',
-                      onTap: () => context.push('/tarifa', extra: _taxista),
-                    ),
-                    const SizedBox(height: 12),
-                    _FilaAcceso(
-                      icono: Icons.description,
-                      titulo: 'Mis documentos',
-                      onTap: () => context.push('/revision'),
-                    ),
-                    const SizedBox(height: 12),
-                    _FilaAcceso(
-                      icono: Icons.history,
-                      titulo: 'Historial de viajes',
-                      onTap: () => context.push('/historial'),
-                    ),
-                    const SizedBox(height: 12),
-                    _FilaAcceso(
-                      icono: Icons.receipt_long,
-                      titulo: 'Mis pagos y facturas',
-                      onTap: () => context.push('/mis-pagos'),
-                    ),
-                    const SizedBox(height: 12),
-                    _FilaAcceso(
-                      icono: Icons.card_giftcard,
-                      titulo: 'Mis referidos',
-                      onTap: () => context.push('/referidos'),
-                    ),
-                    const SizedBox(height: 12),
-                    _FilaAcceso(
-                      icono: Icons.settings,
-                      titulo: 'Configuración',
-                      onTap: () => context.push('/configuracion'),
-                    ),
-                    const SizedBox(height: 12),
-                    _FilaAcceso(
-                      icono: Icons.help_outline,
-                      titulo: 'Ayuda y soporte',
-                      onTap: () => context.push('/ayuda'),
-                    ),
                   ],
                 ),
               ),
-      ),
-    );
-  }
-}
-
-class _FilaAcceso extends StatelessWidget {
-  const _FilaAcceso({
-    required this.icono,
-    required this.titulo,
-    required this.onTap,
-  });
-
-  final IconData icono;
-  final String titulo;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: CLODColors.fondoTarjeta(context),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: CLODColors.borde(context)),
-        ),
-        child: Row(
-          children: [
-            Icon(icono, size: 20, color: CLODColors.azulCLOD),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                titulo,
-                style: CLODTextStyles.bodyLarge.copyWith(
-                  color: CLODColors.texto(context),
-                ),
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: CLODColors.texto(context).withValues(alpha: 0.4),
-            ),
-          ],
-        ),
       ),
     );
   }

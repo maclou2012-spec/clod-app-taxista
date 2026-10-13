@@ -4,9 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../models/calificar_pasajero_args.dart';
 import '../models/viaje_en_curso_args.dart';
 import '../screens/cuenta/ayuda_screen.dart';
-import '../screens/cuenta/configuracion_screen.dart';
 import '../screens/cuenta/contacto_emergencia_screen.dart';
 import '../screens/cuenta/historial_screen.dart';
+import '../screens/cuenta/mis_documentos_screen.dart';
 import '../screens/cuenta/perfil_screen.dart';
 import '../screens/cuenta/referidos_screen.dart';
 import '../screens/onboarding/otp_verification_screen.dart';
@@ -32,7 +32,6 @@ import '../screens/registro/servicio_screen.dart';
 import '../screens/registro/tarifa_screen.dart';
 import '../screens/registro/vehiculo_screen.dart';
 import '../screens/registro/verificacion_facial_screen.dart';
-import '../screens/test_maps_screen.dart';
 
 // Permite que una pantalla (ej. ReferidosScreen) se entere cuando vuelve a
 // quedar visible tras hacer pop de la ruta que la cubría, para refrescar
@@ -112,13 +111,22 @@ final GoRouter appRouter = GoRouter(
       path: '/referidos',
       builder: (context, state) => const ReferidosScreen(),
     ),
+    // Configuración ya no existe como pantalla propia — su contenido se
+    // repartió entre "Mi cuenta" (menú) y Mi tarifa (servicios
+    // adicionales). Un enlace viejo (ej. guardado en el historial del
+    // navegador de alguien, o un deep link externo desactualizado) cae
+    // aquí y se manda al panel en vez de un 404.
     GoRoute(
       path: '/configuracion',
-      builder: (context, state) => const ConfiguracionScreen(),
+      redirect: (context, state) => '/dashboard',
     ),
     GoRoute(
-      path: '/configuracion/contacto-emergencia',
+      path: '/contacto-emergencia',
       builder: (context, state) => const ContactoEmergenciaScreen(),
+    ),
+    GoRoute(
+      path: '/mis-documentos',
+      builder: (context, state) => const MisDocumentosScreen(),
     ),
     GoRoute(path: '/ayuda', builder: (context, state) => const AyudaScreen()),
     GoRoute(
@@ -136,10 +144,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/mis-pagos',
       builder: (context, state) => const MisPagosScreen(),
-    ),
-    GoRoute(
-      path: '/test-maps',
-      builder: (context, state) => const TestMapsScreen(),
     ),
     GoRoute(
       path: '/dashboard',

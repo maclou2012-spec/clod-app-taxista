@@ -80,6 +80,67 @@ String tipoViajeDesdeMapa(Map<String, dynamic> mapa) {
   return mapa['tipo_viaje']?.toString() ?? 'normal';
 }
 
+// 'parada' | 'destino' | 'completar' — el backend decide cuál es el
+// siguiente paso del taxista (prompt 21); null si /detalle todavía no lo
+// manda (versión del backend sin desplegar), en cuyo caso
+// pasoViajeEnCursoDesde cae a derivarlo localmente de las paradas.
+String? siguientePasoDesdeMapa(Map<String, dynamic> mapa) {
+  return mapa['siguiente_paso']?.toString();
+}
+
+// parada_actual puede llegar como el id plano o como el objeto completo de
+// la parada — se acepta cualquiera de las dos formas (misma incertidumbre
+// que paradaActualId en la app de pasajero, donde tampoco se confirmó la
+// forma exacta contra un backend real).
+int? paradaActualIdDesdeMapa(Map<String, dynamic> mapa) {
+  final valor = mapa['parada_actual'];
+  if (valor is Map<String, dynamic>) {
+    final id = valor['id'];
+    return id is num ? id.toInt() : null;
+  }
+  if (valor is num) return valor.toInt();
+  if (valor is String) return int.tryParse(valor);
+  return null;
+}
+
+// Qué debe mostrarle la pantalla de viaje en curso al taxista en este
+// momento. Pura y separada de ViajeEnCursoScreen para poder probarla por
+// unidad con 0/1/2/3 paradas, paradas omitidas, y siguiente_paso ausente o
+// con un valor no reconocido — ver test/screens/viaje_en_curso_screen_test.dart.
+//
+// Si el backend manda siguiente_paso, es SIEMPRE la fuente de verdad (nunca
+// se contradice con una derivación local). Si no lo manda (backend viejo),
+// se deriva de las paradas: alguna sin resolver -> 'parada', todas
+// resueltas (o sin paradas) -> 'destino'. Un valor de siguiente_paso que no
+// es ninguno de los tres esperados es un estado inconsistente real (ej. un
+// typo del backend o un valor nuevo que esta versión no conoce todavía) —
+// nunca se asume cuál de los tres fue, se pide resincronizar.
+enum PasoViajeEnCurso { parada, destino, completar, inconsistente }
+
+PasoViajeEnCurso pasoViajeEnCursoDesde({
+  required String? siguientePaso,
+  required List<ParadaViaje> paradas,
+  required String tipoViaje,
+}) {
+  switch (siguientePaso) {
+    case 'parada':
+      return PasoViajeEnCurso.parada;
+    case 'destino':
+      return PasoViajeEnCurso.destino;
+    case 'completar':
+      return PasoViajeEnCurso.completar;
+    case null:
+      if (tipoViaje == 'normal' || paradas.isEmpty) {
+        return PasoViajeEnCurso.destino;
+      }
+      return paradas.every((parada) => parada.completadaUOmitida)
+          ? PasoViajeEnCurso.destino
+          : PasoViajeEnCurso.parada;
+    default:
+      return PasoViajeEnCurso.inconsistente;
+  }
+}
+
 // El sistema NO sugiere montos: un campo vacío se guarda como 0, nunca con
 // un valor "recomendado" propio. null si el texto no es un número válido
 // (ej. coma suelta) o es negativo — eso sí se rechaza antes de guardar.

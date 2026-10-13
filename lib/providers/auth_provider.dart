@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/secure_storage_service.dart';
 
-enum VerificacionResultado { exito, requiereRegistro, error }
+enum VerificacionResultado { exito, requiereRegistro, rolNoPermitido, error }
 
 class AuthProvider extends ChangeNotifier {
   AuthProvider({
@@ -25,6 +25,9 @@ class AuthProvider extends ChangeNotifier {
 
   bool cargando = false;
   String? errorMensaje;
+  // Mensaje EXACTO del servidor para ROL_NO_PERMITIDO — distinto de
+  // errorMensaje porque este se muestra en un diálogo aparte, no inline.
+  String? rolNoPermitidoMensaje;
   String? verificationId;
   String telefonoCompleto = '';
   String? idToken;
@@ -102,6 +105,11 @@ class AuthProvider extends ChangeNotifier {
         cargando = false;
         notifyListeners();
         return VerificacionResultado.requiereRegistro;
+      } on RolNoPermitidoException catch (e) {
+        rolNoPermitidoMensaje = e.mensaje;
+        cargando = false;
+        notifyListeners();
+        return VerificacionResultado.rolNoPermitido;
       }
     } catch (e) {
       errorMensaje = 'Código incorrecto, intenta de nuevo';
@@ -155,6 +163,11 @@ class AuthProvider extends ChangeNotifier {
       cargando = false;
       notifyListeners();
       return true;
+    } on RolNoPermitidoException catch (e) {
+      errorMensaje = e.mensaje;
+      cargando = false;
+      notifyListeners();
+      return false;
     } catch (e) {
       errorMensaje = 'No se pudo completar el registro. Intenta de nuevo.';
       cargando = false;

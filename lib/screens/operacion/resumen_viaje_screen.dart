@@ -59,7 +59,13 @@ class ResumenViajeScreen extends StatelessWidget {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0F7FC),
+                    // Antes un azul clarito fijo (#F0F7FC) — se quedaba
+                    // pálido y chocaba con el fondo oscuro.
+                    color: CLODColors.azulCLOD.withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.18
+                          : 0.08,
+                    ),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(

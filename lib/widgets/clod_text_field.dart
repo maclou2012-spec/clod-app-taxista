@@ -42,7 +42,11 @@ class CLODTextField extends StatelessWidget {
         counterText: maxLength != null ? '' : null,
         hintText: hintText,
         filled: true,
-        fillColor: Colors.white,
+        // Antes era Colors.white fijo — quedaba una caja blanca brillando
+        // sobre el fondo oscuro del tema (esta app usa oscuro por
+        // defecto). fondoTarjeta ya responde al tema igual que el resto de
+        // las superficies de tarjeta de la app.
+        fillColor: CLODColors.fondoTarjeta(context),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: CLODColors.borde(context)),

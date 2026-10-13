@@ -63,9 +63,55 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       case VerificacionResultado.exito:
         unawaited(FcmService().inicializar());
         context.go('/dashboard');
+      case VerificacionResultado.rolNoPermitido:
+        _pinController.clear();
+        await _mostrarDialogoRolNoPermitido(
+          authProvider.rolNoPermitidoMensaje ??
+              'Tu cuenta no tiene permiso para usar esta app.',
+        );
       case VerificacionResultado.error:
         _pinController.clear();
     }
+  }
+
+  // Sin sesión a medias: verificarCodigo ya no guarda ningún token cuando
+  // el login responde ROL_NO_PERMITIDO (ver AuthProvider), así que aquí
+  // solo queda explicarle al taxista y, si elige otro número, regresar al
+  // inicio del flujo de autenticación.
+  Future<void> _mostrarDialogoRolNoPermitido(String mensaje) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'No puedes usar esta app',
+          style: CLODTextStyles.headingSmall.copyWith(
+            color: CLODColors.texto(dialogContext),
+          ),
+        ),
+        content: Text(
+          mensaje,
+          style: CLODTextStyles.bodyMedium.copyWith(
+            color: CLODColors.texto(dialogContext).withValues(alpha: 0.8),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              if (mounted) context.go('/telefono');
+            },
+            child: Text(
+              'Usar otro número',
+              style: CLODTextStyles.bodyLarge.copyWith(
+                color: CLODColors.azulCLOD,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _reenviarCodigo(AuthProvider authProvider) async {

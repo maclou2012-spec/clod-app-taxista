@@ -15,6 +15,19 @@ class RequiereRegistroException implements Exception {
   String toString() => 'RequiereRegistroException: $data';
 }
 
+// POST /auth/login puede responder 403/409 con codigo 'ROL_NO_PERMITIDO'
+// (ej. el número ya está registrado como pasajero en la app hermana) — se
+// muestra tal cual el mensaje del servidor, nunca uno genérico de "código
+// incorrecto".
+class RolNoPermitidoException implements Exception {
+  RolNoPermitidoException(this.mensaje);
+
+  final String mensaje;
+
+  @override
+  String toString() => 'RolNoPermitidoException: $mensaje';
+}
+
 enum IniciarViajeResultado {
   exito,
   codigoIncorrecto,
@@ -267,15 +280,29 @@ class ApiService {
           'nombre': ?nombre,
           'rol': ?rol,
           'codigoReferido': ?codigoReferido,
+          // Defensivo: el backend puede usar esto para decidir
+          // ROL_NO_PERMITIDO si el número ya es de un pasajero — no se
+          // confirmó que lo espere, pero mandarlo de más no rompe nada si
+          // lo ignora.
+          'app': 'taxista',
         },
       );
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
       final data = e.response?.data;
-      if (e.response?.statusCode == 400 &&
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 400 &&
           data is Map<String, dynamic> &&
           data['status'] == 'requiere_registro') {
         throw RequiereRegistroException(data);
+      }
+      if ((statusCode == 403 || statusCode == 409) &&
+          data is Map<String, dynamic> &&
+          data['codigo'] == 'ROL_NO_PERMITIDO') {
+        final mensaje = data['mensaje'] as String? ?? data['message'] as String?;
+        throw RolNoPermitidoException(
+          mensaje ?? 'Tu cuenta no tiene permiso para usar esta app.',
+        );
       }
       rethrow;
     }
@@ -868,5 +895,34 @@ class ApiService {
         'costo_por_minuto': ?costoPorMinuto,
       },
     );
+  }
+
+  // --- Panel principal (prompt 21) ------------------------------------------
+
+  // { viajes_completados_hoy, ganancias_estimadas_hoy } — null si el
+  // endpoint todavía no está desplegado (404) o cualquier otro error, para
+  // que el panel simplemente no muestre los KPI en vez de romperse.
+  Future<Map<String, dynamic>?> obtenerResumenDia() async {
+    try {
+      final response = await _dio.get('/api/taxistas/me/resumen-dia');
+      final data = response.data;
+      return data is Map<String, dynamic> ? data : null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  // { suficiente_datos, actualizado_en, franja, celdas:[{lat,lng,tamano_m,
+  // intensidad}] } — null si el endpoint todavía no está desplegado (404).
+  Future<Map<String, dynamic>?> obtenerZonasDemanda() async {
+    try {
+      final response = await _dio.get('/api/taxistas/me/zonas-demanda');
+      final data = response.data;
+      return data is Map<String, dynamic> ? data : null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
   }
 }
