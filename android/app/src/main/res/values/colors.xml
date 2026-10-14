@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- azul_clod debe ser idéntico a CLODColors.azulCLOD en
+     lib/theme/clod_theme.dart (0xFF1CA3E3) — usado como color de acento de
+     las notificaciones de FCM (ver default_notification_color en
+     AndroidManifest.xml). -->
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="azul_clod">#FF1CA3E3</color>
+    <!-- Fondo del splash nativo claro — idéntico a CLODColors.grisClaro
+         (scaffoldBackgroundColor de CLODTheme.light). -->
+    <color name="splash_fondo_claro">#FFF4F6F8</color>
+    <!-- Fondo del splash nativo oscuro — idéntico a CLODColors.carbon
+         (scaffoldBackgroundColor de CLODTheme.dark, el tema por defecto de
+         esta app). -->
+    <color name="splash_fondo_oscuro">#FF2B2B2E</color>
+</resources>

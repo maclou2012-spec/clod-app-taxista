@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Combinación explícita noche + API21+ para que no quede ambigüedad de
+     precedencia frente a drawable-v21/launch_background.xml (claro) en un
+     dispositivo en modo oscuro — ver drawable-night/launch_background.xml
+     para el mismo contenido sin el calificador de versión. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_fondo_oscuro" />
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/splash_logo" />
+    </item>
+</layer-list>

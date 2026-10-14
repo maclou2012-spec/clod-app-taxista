@@ -1,12 +1,33 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Antes de este cambio, INTERNET solo estaba declarado en
+         android/app/src/debug/AndroidManifest.xml — Android Gradle Plugin lo
+         inyecta automáticamente en builds debug por conveniencia, pero NUNCA
+         en release. Sin esta línea aquí, el primer APK release no habría
+         tenido acceso a red en absoluto: ni Dio (API del backend), ni
+         Firebase Auth/FCM, ni Socket.io, ni los tiles de Mapbox habrían
+         podido cargar nunca, sin ningún error visible más allá de que todo
+         fallara en silencio. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
-        android:label="taxiclod"
+        android:label="TaxiCLOD"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- FCM usa estos dos cuando la app está en segundo plano/cerrada y
+             el propio sistema operativo dibuja la notificación (no pasa por
+             ningún código Dart nuestro) — sin esto, Android intenta usar
+             android:icon de arriba, que es a color, y lo fuerza a un bloque
+             sólido o a una advertencia genérica mal recortada en vez de la
+             silueta blanca real. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/azul_clod" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

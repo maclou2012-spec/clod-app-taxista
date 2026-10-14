@@ -50,6 +50,7 @@ class MyApp extends StatelessWidget {
         builder: (context) {
           return MaterialApp.router(
             title: 'TaxiCLOD',
+            debugShowCheckedModeBanner: false,
             theme: CLODTheme.light,
             darkTheme: CLODTheme.dark,
             themeMode: context.watch<ThemeProvider>().modo,

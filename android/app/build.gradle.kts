@@ -16,6 +16,17 @@ if (secretsPropertiesFile.exists()) {
     secretsProperties.load(FileInputStream(secretsPropertiesFile))
 }
 
+// key.properties (y el .jks que apunta) viven FUERA del repo / están en
+// .gitignore — ver android/.gitignore. Sin ese archivo (ej. un clon nuevo
+// del repo sin la keystore), el build release cae de vuelta a la firma
+// debug en vez de fallar, igual que antes de este cambio.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+val hayKeystoreConfigurada = keystorePropertiesFile.exists()
+if (hayKeystoreConfigurada) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.clod.taxiclod"
     compileSdk = flutter.compileSdkVersion
@@ -39,11 +50,33 @@ android {
         manifestPlaceholders["mapsApiKey"] = secretsProperties.getProperty("MAPS_API_KEY", "")
     }
 
+    signingConfigs {
+        if (hayKeystoreConfigurada) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Sin key.properties (ej. checkout nuevo sin la keystore local),
+            // cae a la firma debug — igual que antes de este cambio — en vez
+            // de que el build entero falle.
+            signingConfig = if (hayKeystoreConfigurada) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
+            // minifyEnabled/shrinkResources quedan DESACTIVADOS a propósito
+            // para este primer release: activar R8 sin antes probar y
+            // agregar las reglas ProGuard necesarias para Mapbox/Firebase/
+            // Stripe/geolocator puede romper el build o la app en tiempo de
+            // ejecución de forma silenciosa — queda pendiente para una
+            // siguiente iteración, ya probada.
         }
     }
 }
