@@ -28,6 +28,18 @@ class RolNoPermitidoException implements Exception {
   String toString() => 'RolNoPermitidoException: $mensaje';
 }
 
+// El código de vendedor es opcional y nunca debe bloquear el registro —
+// quien llama a actualizarDatosPersonales() debe atrapar esto y
+// reintentar sin el código, nunca dejar al taxista sin poder continuar.
+class CodigoVendedorInvalidoException implements Exception {
+  CodigoVendedorInvalidoException(this.mensaje);
+
+  final String mensaje;
+
+  @override
+  String toString() => 'CodigoVendedorInvalidoException: $mensaje';
+}
+
 enum IniciarViajeResultado {
   exito,
   codigoIncorrecto,
@@ -342,25 +354,43 @@ class ApiService {
     String? contactoEmergenciaNombre,
     String? contactoEmergenciaTelefono,
     int? localidadId,
+    String? codigoVendedor,
   }) async {
-    final response = await _dio.put(
-      '/api/taxistas/perfil',
-      data: {
-        'nombre': nombre,
-        'fecha_nacimiento': ?fechaNacimiento,
-        'curp': ?curp,
-        'rfc': ?rfc,
-        'direccion_calle': ?direccionCalle,
-        'direccion_numero': ?direccionNumero,
-        'direccion_colonia': ?direccionColonia,
-        'direccion_cp': ?direccionCp,
-        'direccion_ciudad': ?direccionCiudad,
-        'contacto_emergencia_nombre': ?contactoEmergenciaNombre,
-        'contacto_emergencia_telefono': ?contactoEmergenciaTelefono,
-        'localidad_id': ?localidadId,
-      },
-    );
-    return response.data as Map<String, dynamic>;
+    try {
+      final response = await _dio.put(
+        '/api/taxistas/perfil',
+        data: {
+          'nombre': nombre,
+          'fecha_nacimiento': ?fechaNacimiento,
+          'curp': ?curp,
+          'rfc': ?rfc,
+          'direccion_calle': ?direccionCalle,
+          'direccion_numero': ?direccionNumero,
+          'direccion_colonia': ?direccionColonia,
+          'direccion_cp': ?direccionCp,
+          'direccion_ciudad': ?direccionCiudad,
+          'contacto_emergencia_nombre': ?contactoEmergenciaNombre,
+          'contacto_emergencia_telefono': ?contactoEmergenciaTelefono,
+          'localidad_id': ?localidadId,
+          'codigo_vendedor': ?codigoVendedor,
+        },
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final statusCode = e.response?.statusCode;
+      // Forma del código de error no confirmada contra el backend real —
+      // se prueban los nombres más probables en vez de asumir uno solo.
+      if (statusCode == 400 &&
+          data is Map<String, dynamic> &&
+          (data['codigo'] == 'CODIGO_VENDEDOR_INVALIDO' ||
+              data['codigo'] == 'VENDEDOR_NO_ENCONTRADO')) {
+        throw CodigoVendedorInvalidoException(
+          data['mensaje'] as String? ?? 'El código de vendedor no es válido.',
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<List<dynamic>> obtenerLocalidades() async {

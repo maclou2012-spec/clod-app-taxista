@@ -8,15 +8,34 @@ import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
 import '../../widgets/clod_text_field.dart';
 
+// Letras, números y guiones — vacío siempre es válido (el campo es
+// opcional).
+final RegExp _formatoCodigoVendedor = RegExp(r'^[A-Z0-9-]{1,20}$');
+
+class _FormateadorMayusculas extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return newValue.copyWith(text: newValue.text.toUpperCase());
+  }
+}
+
 class DatosPersonalesScreen extends StatefulWidget {
-  const DatosPersonalesScreen({super.key});
+  const DatosPersonalesScreen({super.key, this.apiService});
+
+  // Inyectable solo para pruebas de widgets (evita llamadas de red reales
+  // sin timeout, que dejan un Timer pendiente al terminar el test) — en la
+  // app real siempre se omite y se usa el singleton normal.
+  final ApiService? apiService;
 
   @override
   State<DatosPersonalesScreen> createState() => _DatosPersonalesScreenState();
 }
 
 class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
-  final ApiService _apiService = ApiService();
+  late final ApiService _apiService = widget.apiService ?? ApiService();
 
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _curpController = TextEditingController();
@@ -30,12 +49,19 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
       TextEditingController();
   final TextEditingController _contactoTelefonoController =
       TextEditingController();
+  final TextEditingController _codigoVendedorController =
+      TextEditingController();
 
   String _nombre = '';
   String _contactoTelefono = '';
+  String _codigoVendedor = '';
   DateTime? _fechaNacimiento;
   bool _cargando = false;
   String? _errorMensaje;
+
+  bool get _codigoVendedorFormatoValido =>
+      _codigoVendedor.trim().isEmpty ||
+      _formatoCodigoVendedor.hasMatch(_codigoVendedor.trim());
 
   @override
   void initState() {
@@ -45,6 +71,9 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
     });
     _contactoTelefonoController.addListener(() {
       setState(() => _contactoTelefono = _contactoTelefonoController.text);
+    });
+    _codigoVendedorController.addListener(() {
+      setState(() => _codigoVendedor = _codigoVendedorController.text);
     });
     _cargarPerfilActual();
   }
@@ -104,6 +133,7 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
     _ciudadController.dispose();
     _contactoNombreController.dispose();
     _contactoTelefonoController.dispose();
+    _codigoVendedorController.dispose();
     super.dispose();
   }
 
@@ -157,41 +187,73 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
     return '${fecha.year}-$mes-$dia';
   }
 
+  Future<void> _intentarGuardar(String? codigoVendedor) {
+    return _apiService.actualizarDatosPersonales(
+      nombre: _nombre.trim(),
+      fechaNacimiento: _fechaNacimiento == null
+          ? null
+          : _formatearFecha(_fechaNacimiento!),
+      curp: _vacioAnulo(_curpController),
+      rfc: _vacioAnulo(_rfcController),
+      direccionCalle: _vacioAnulo(_calleController),
+      direccionNumero: _vacioAnulo(_numeroController),
+      direccionColonia: _vacioAnulo(_coloniaController),
+      direccionCp: _vacioAnulo(_cpController),
+      direccionCiudad: _vacioAnulo(_ciudadController),
+      contactoEmergenciaNombre: _vacioAnulo(_contactoNombreController),
+      contactoEmergenciaTelefono: _contactoTelefono,
+      codigoVendedor: codigoVendedor,
+    );
+  }
+
   Future<void> _onContinuar() async {
     setState(() {
       _cargando = true;
       _errorMensaje = null;
     });
 
+    final codigoVendedor = _codigoVendedor.trim();
+
     try {
-      await _apiService.actualizarDatosPersonales(
-        nombre: _nombre.trim(),
-        fechaNacimiento: _fechaNacimiento == null
-            ? null
-            : _formatearFecha(_fechaNacimiento!),
-        curp: _vacioAnulo(_curpController),
-        rfc: _vacioAnulo(_rfcController),
-        direccionCalle: _vacioAnulo(_calleController),
-        direccionNumero: _vacioAnulo(_numeroController),
-        direccionColonia: _vacioAnulo(_coloniaController),
-        direccionCp: _vacioAnulo(_cpController),
-        direccionCiudad: _vacioAnulo(_ciudadController),
-        contactoEmergenciaNombre: _vacioAnulo(_contactoNombreController),
-        contactoEmergenciaTelefono: _contactoTelefono,
-      );
-      if (mounted) {
-        context.go('/identificacion-oficial');
-      }
+      await _intentarGuardar(codigoVendedor.isEmpty ? null : codigoVendedor);
+      if (mounted) context.go('/identificacion-oficial');
+    } on CodigoVendedorInvalidoException catch (e) {
+      await _reintentarSinCodigoVendedor(e.mensaje);
     } catch (e) {
-      if (mounted) {
+      // El código de vendedor es opcional — si ALGO falló mientras se
+      // mandaba (el backend puede no distinguir el error con un código
+      // propio todavía), se reintenta sin él antes de rendirse, para que
+      // nunca sea la causa de que el taxista se quede atorado aquí.
+      if (codigoVendedor.isNotEmpty) {
+        await _reintentarSinCodigoVendedor('No se pudo aplicar el código de vendedor.');
+      } else if (mounted) {
         setState(() {
           _errorMensaje =
               'No se pudo guardar tu información. Intenta de nuevo.';
         });
       }
     } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  Future<void> _reintentarSinCodigoVendedor(String mensajeVendedor) async {
+    try {
+      await _intentarGuardar(null);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$mensajeVendedor Tu información se guardó de todas formas.'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      context.go('/identificacion-oficial');
+    } catch (e) {
       if (mounted) {
-        setState(() => _cargando = false);
+        setState(() {
+          _errorMensaje =
+              'No se pudo guardar tu información. Intenta de nuevo.';
+        });
       }
     }
   }
@@ -278,6 +340,40 @@ class _DatosPersonalesScreenState extends State<DatosPersonalesScreen> {
                   textCapitalization: TextCapitalization.characters,
                   maxLength: 13,
                   hintText: '13 caracteres',
+                ),
+              ),
+              const SizedBox(height: 20),
+              _campoConEtiqueta(
+                'Código de vendedor (opcional)',
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '¿Te invitó un vendedor de CLOD? Escribe su código',
+                      style: CLODTextStyles.bodySmall.copyWith(
+                        color: CLODColors.texto(context).withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    CLODTextField(
+                      controller: _codigoVendedorController,
+                      textCapitalization: TextCapitalization.characters,
+                      inputFormatters: [
+                        _FormateadorMayusculas(),
+                        FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9-]')),
+                      ],
+                      hintText: 'Código del vendedor',
+                    ),
+                    if (!_codigoVendedorFormatoValido) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Solo letras, números y guiones (máx. 20 caracteres).',
+                        style: CLODTextStyles.bodySmall.copyWith(
+                          color: CLODColors.rojoUbicacion,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(height: 32),
