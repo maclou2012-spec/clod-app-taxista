@@ -99,6 +99,64 @@ void main() {
       await tester.tap(find.byType(IndicadorDisponibilidadDashboard));
       expect(tocado, isTrue);
     });
+
+    testWidgets(
+      'membresiaVigente=false muestra "Membresía no vigente" y el botón de renovar, no "Disponible"/"No disponible"',
+      (tester) async {
+        var renovado = false;
+        await tester.pumpWidget(
+          _envolver(
+            IndicadorDisponibilidadDashboard(
+              disponible: true,
+              membresiaVigente: false,
+              onTap: () {},
+              onRenovar: () => renovado = true,
+            ),
+          ),
+        );
+
+        expect(find.text('Membresía no vigente'), findsOneWidget);
+        expect(find.text('Disponible'), findsNothing);
+        expect(find.text('No disponible'), findsNothing);
+
+        await tester.tap(find.text('Renovar membresía'));
+        expect(renovado, isTrue);
+      },
+    );
+
+    testWidgets('membresiaVigente=true (por defecto) no muestra el botón de renovar', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _envolver(
+          IndicadorDisponibilidadDashboard(disponible: true, onTap: () {}),
+        ),
+      );
+
+      expect(find.text('Disponible'), findsOneWidget);
+      expect(find.text('Renovar membresía'), findsNothing);
+    });
+  });
+
+  group('AvisoVencimientoMembresiaDashboard', () {
+    testWidgets('muestra el mensaje y llama a onRenovar al tocar "Renovar"', (
+      tester,
+    ) async {
+      var renovado = false;
+      await tester.pumpWidget(
+        _envolver(
+          AvisoVencimientoMembresiaDashboard(
+            mensaje: 'Tu membresía vence el 20/03',
+            onRenovar: () => renovado = true,
+          ),
+        ),
+      );
+
+      expect(find.text('Tu membresía vence el 20/03'), findsOneWidget);
+
+      await tester.tap(find.text('Renovar'));
+      expect(renovado, isTrue);
+    });
   });
 
   group('ListaSolicitudesDashboard', () {

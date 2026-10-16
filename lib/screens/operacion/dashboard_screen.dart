@@ -584,8 +584,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   IndicadorDisponibilidadDashboard(
                     disponible: disponibilidad.disponible,
+                    membresiaVigente: disponibilidad.membresiaVigente,
                     onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                    onRenovar: () => context.push('/membresia'),
                   ),
+                  if (disponibilidad.mensajeVencimientoProximo != null)
+                    AvisoVencimientoMembresiaDashboard(
+                      mensaje: disponibilidad.mensajeVencimientoProximo!,
+                      onRenovar: () => context.push('/membresia'),
+                    ),
                   ConstrainedBox(
                     constraints: BoxConstraints(
                       maxHeight: alturaMaximaSolicitudes,
@@ -802,20 +809,26 @@ class _IndicadorConexionSocket extends StatelessWidget {
 
 // Ya no abre/cierra la disponibilidad directo (eso vive en el switch del
 // drawer) — solo refleja el estado actual y, al tocarlo, abre el menú
-// donde está el switch real.
+// donde está el switch real. Si la membresía no está vigente, en vez del
+// estado disponible/no disponible muestra el aviso y un acceso directo a
+// renovar (el switch deshabilitado "de verdad" vive en el drawer).
 class IndicadorDisponibilidadDashboard extends StatelessWidget {
   const IndicadorDisponibilidadDashboard({
     super.key,
     required this.disponible,
     required this.onTap,
+    this.membresiaVigente = true,
+    this.onRenovar,
   });
 
   final bool disponible;
   final VoidCallback onTap;
+  final bool membresiaVigente;
+  final VoidCallback? onRenovar;
 
   @override
   Widget build(BuildContext context) {
-    final color = disponible
+    final color = (disponible && membresiaVigente)
         ? CLODColors.azulCLOD
         : CLODColors.texto(context).withValues(alpha: 0.4);
 
@@ -837,20 +850,82 @@ class IndicadorDisponibilidadDashboard extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              disponible ? 'Disponible' : 'No disponible',
+              !membresiaVigente
+                  ? 'Membresía no vigente'
+                  : disponible
+                  ? 'Disponible'
+                  : 'No disponible',
               style: CLODTextStyles.bodyMedium.copyWith(
                 color: CLODColors.texto(context),
                 fontWeight: FontWeight.w600,
               ),
             ),
             const Spacer(),
-            Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: CLODColors.texto(context).withValues(alpha: 0.4),
-            ),
+            if (!membresiaVigente && onRenovar != null)
+              TextButton(
+                onPressed: onRenovar,
+                style: TextButton.styleFrom(
+                  foregroundColor: CLODColors.azulCLOD,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Renovar membresía'),
+              )
+            else
+              Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: CLODColors.texto(context).withValues(alpha: 0.4),
+              ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// Recordatorio de renovación (no un bloqueo): solo aparece cuando la
+// membresía SIGUE vigente pero vence en 5 días o menos.
+class AvisoVencimientoMembresiaDashboard extends StatelessWidget {
+  const AvisoVencimientoMembresiaDashboard({
+    super.key,
+    required this.mensaje,
+    required this.onRenovar,
+  });
+
+  final String mensaje;
+  final VoidCallback onRenovar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: CLODColors.azulCLOD.withValues(alpha: 0.08),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 16, color: CLODColors.azulCLOD),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              mensaje,
+              style: CLODTextStyles.bodySmall.copyWith(
+                color: CLODColors.texto(context),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onRenovar,
+            style: TextButton.styleFrom(
+              foregroundColor: CLODColors.azulCLOD,
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(0, 0),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Renovar'),
+          ),
+        ],
       ),
     );
   }

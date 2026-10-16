@@ -92,12 +92,22 @@ class _ClodDrawerState extends State<ClodDrawer> {
     }
   }
 
+  void _irARenovarMembresia(BuildContext context) {
+    Navigator.of(context).pop();
+    context.push('/membresia');
+  }
+
   Future<void> _cambiarConManejoDeError(
     DisponibilidadProvider provider,
     bool nuevoValor,
   ) async {
     try {
       await provider.cambiarDisponibilidad(nuevoValor);
+    } on MembresiaNoVigenteException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.mensaje)));
     } on DioException catch (e) {
       if (!mounted) return;
       final data = e.response?.data;
@@ -261,29 +271,77 @@ class _ClodDrawerState extends State<ClodDrawer> {
                           // avisa que el ripple queda invisible.
                           child: Material(
                             type: MaterialType.transparency,
-                            child: SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              value: disponibilidad.disponible,
-                              onChanged: disponibilidad.cargando
-                                  ? null
-                                  : _onToggleDisponibilidad,
-                              activeTrackColor: CLODColors.azulCLOD,
-                              title: Text(
-                                'Disponibilidad voluntaria',
-                                style: CLODTextStyles.bodyMedium.copyWith(
-                                  color: CLODColors.texto(context),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  value: disponibilidad.disponible,
+                                  onChanged:
+                                      disponibilidad.cargando ||
+                                          !disponibilidad.membresiaVigente
+                                      ? null
+                                      : _onToggleDisponibilidad,
+                                  activeTrackColor: CLODColors.azulCLOD,
+                                  title: Text(
+                                    'Disponibilidad voluntaria',
+                                    style: CLODTextStyles.bodyMedium.copyWith(
+                                      color: CLODColors.texto(context),
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    !disponibilidad.membresiaVigente
+                                        ? 'Membresía no vigente'
+                                        : disponibilidad.disponible
+                                        ? 'Conectado'
+                                        : 'Desconectado',
+                                    style: CLODTextStyles.bodySmall.copyWith(
+                                      color: CLODColors.texto(
+                                        context,
+                                      ).withValues(alpha: 0.6),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              subtitle: Text(
-                                disponibilidad.disponible
-                                    ? 'Conectado'
-                                    : 'Desconectado',
-                                style: CLODTextStyles.bodySmall.copyWith(
-                                  color: CLODColors.texto(
-                                    context,
-                                  ).withValues(alpha: 0.6),
-                                ),
-                              ),
+                                if (!disponibilidad.membresiaVigente)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: 10,
+                                    ),
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: () => _irARenovarMembresia(
+                                          context,
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              CLODColors.azulCLOD,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        child: const Text(
+                                          'Renovar membresía',
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else if (disponibilidad
+                                        .mensajeVencimientoProximo !=
+                                    null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: 10,
+                                    ),
+                                    child: Text(
+                                      disponibilidad.mensajeVencimientoProximo!,
+                                      style: CLODTextStyles.bodySmall
+                                          .copyWith(
+                                            color: CLODColors.texto(
+                                              context,
+                                            ).withValues(alpha: 0.7),
+                                          ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),

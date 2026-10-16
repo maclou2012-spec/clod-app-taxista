@@ -40,6 +40,19 @@ class CodigoVendedorInvalidoException implements Exception {
   String toString() => 'CodigoVendedorInvalidoException: $mensaje';
 }
 
+// PATCH /taxistas/disponibilidad puede responder 403 {codigo:
+// 'MEMBRESIA_NO_VIGENTE', mensaje} cuando el taxista intenta activarse sin
+// una membresía vigente — nunca un bloqueo "por mal comportamiento", solo
+// un recordatorio de que hay que renovar. El mensaje se muestra tal cual.
+class MembresiaNoVigenteException implements Exception {
+  MembresiaNoVigenteException(this.mensaje);
+
+  final String mensaje;
+
+  @override
+  String toString() => 'MembresiaNoVigenteException: $mensaje';
+}
+
 enum IniciarViajeResultado {
   exito,
   codigoIncorrecto,
@@ -541,11 +554,23 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> cambiarDisponibilidad(bool disponible) async {
-    final response = await _dio.patch(
-      '/api/taxistas/disponibilidad',
-      data: {'disponible': disponible},
-    );
-    return response.data as Map<String, dynamic>;
+    try {
+      final response = await _dio.patch(
+        '/api/taxistas/disponibilidad',
+        data: {'disponible': disponible},
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (e.response?.statusCode == 403 &&
+          data is Map<String, dynamic> &&
+          data['codigo'] == 'MEMBRESIA_NO_VIGENTE') {
+        throw MembresiaNoVigenteException(
+          data['mensaje'] as String? ?? 'Tu membresía no está vigente.',
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> obtenerEstadoMembresia() async {

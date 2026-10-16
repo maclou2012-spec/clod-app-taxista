@@ -64,6 +64,15 @@ class SocketService {
   Stream<Map<String, dynamic>> get paradaCompletada =>
       _paradaCompletadaController.stream;
 
+  // El backend avisa por aquí cuando la membresía deja de estar vigente
+  // mientras la app está abierta (no solo al intentar activarse) —
+  // DisponibilidadProvider la escucha para apagar el switch de inmediato.
+  final StreamController<Map<String, dynamic>> _membresiaVencidaController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get membresiaVencida =>
+      _membresiaVencidaController.stream;
+
   // Solicitud del viaje en curso, si hay uno — se incluye automáticamente en
   // cada emisión de ubicación para que el backend también transmita a la
   // sala de esa solicitud específica.
@@ -159,6 +168,15 @@ class SocketService {
         if (data is Map) {
           _paradaCompletadaController.add(Map<String, dynamic>.from(data));
         }
+      })
+      ..on('membresia_vencida', (data) {
+        // Sin "$data" a propósito (a diferencia de los demás logs de este
+        // archivo): nunca se confirmó qué trae este evento, y no vale la
+        // pena arriesgar imprimir algo sensible por un log de depuración.
+        if (kDebugMode) debugPrint('SocketService: membresia_vencida');
+        _membresiaVencidaController.add(
+          data is Map ? Map<String, dynamic>.from(data) : const {},
+        );
       });
   }
 

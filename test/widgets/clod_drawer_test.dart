@@ -53,6 +53,24 @@ Future<void> _agrandarViewport(WidgetTester tester) async {
   addTearDown(() => tester.binding.setSurfaceSize(null));
 }
 
+// Variante que recibe el provider ya construido (en vez de dejar que
+// ChangeNotifierProvider lo cree internamente) para poder llamar
+// provider.marcarMembresiaVencida() desde el test y ver cómo reacciona el
+// switch, sin pasar por un socket real.
+Widget _envolverConProvider(DisponibilidadProvider provider) {
+  final apiService = _apiServiceQueFallaRapido();
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
+      ChangeNotifierProvider<DisponibilidadProvider>.value(value: provider),
+    ],
+    child: MaterialApp(
+      theme: CLODTheme.dark,
+      home: Scaffold(body: ClodDrawer(apiService: apiService)),
+    ),
+  );
+}
+
 void main() {
   testWidgets(
     'orden del menú: switch de disponibilidad debajo del encabezado, '
@@ -135,6 +153,48 @@ void main() {
 
       expect(find.text('Mi perfil'), findsNothing);
       expect(find.text('Configuración'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'membresía no vigente: deshabilita el switch, avisa y muestra "Renovar membresía"',
+    (tester) async {
+      await _agrandarViewport(tester);
+      final provider = DisponibilidadProvider(
+        apiService: _apiServiceQueFallaRapido(),
+      );
+      await tester.pumpWidget(_envolverConProvider(provider));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      provider.marcarMembresiaVencida();
+      await tester.pump();
+
+      expect(find.text('Membresía no vigente'), findsOneWidget);
+      expect(find.text('Renovar membresía'), findsOneWidget);
+      expect(find.text('Conectado'), findsNothing);
+      expect(find.text('Desconectado'), findsNothing);
+
+      final switchTile = tester.widget<SwitchListTile>(
+        find.byType(SwitchListTile),
+      );
+      expect(switchTile.onChanged, isNull);
+    },
+  );
+
+  testWidgets(
+    'membresía vigente y sin aviso de vencimiento: no muestra "Renovar membresía"',
+    (tester) async {
+      await _agrandarViewport(tester);
+      await tester.pumpWidget(_envolver());
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Membresía no vigente'), findsNothing);
+      expect(find.text('Renovar membresía'), findsNothing);
+
+      final switchTile = tester.widget<SwitchListTile>(
+        find.byType(SwitchListTile),
+      );
+      expect(switchTile.onChanged, isNotNull);
     },
   );
 }
