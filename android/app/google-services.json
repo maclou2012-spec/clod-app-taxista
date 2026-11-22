@@ -7,6 +7,43 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:160857431021:android:26695aa97a9e54c1fa65e4",
+        "android_client_info": {
+          "package_name": "com.clod.pasajero"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "160857431021-bd3furbuhmlj28fpmnihcpitcub0mne8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.clod.pasajero",
+            "certificate_hash": "8ad237b339c3cfef0be3e514ba7a213b6f0762f1"
+          }
+        },
+        {
+          "client_id": "160857431021-0o5dlq3hmqqckvocqiis7260222ti79b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9t_raklSq_Rh8BY-Sj_SnCtt4pbbfQkU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "160857431021-0o5dlq3hmqqckvocqiis7260222ti79b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:160857431021:android:bfa4e0d87b88946cfa65e4",
         "android_client_info": {
           "package_name": "com.clod.taxiclod"
