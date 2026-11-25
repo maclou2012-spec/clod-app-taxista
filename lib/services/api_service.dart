@@ -324,7 +324,8 @@ class ApiService {
       if ((statusCode == 403 || statusCode == 409) &&
           data is Map<String, dynamic> &&
           data['codigo'] == 'ROL_NO_PERMITIDO') {
-        final mensaje = data['mensaje'] as String? ?? data['message'] as String?;
+        final mensaje =
+            data['mensaje'] as String? ?? data['message'] as String?;
         throw RolNoPermitidoException(
           mensaje ?? 'Tu cuenta no tiene permiso para usar esta app.',
         );
@@ -779,9 +780,7 @@ class ApiService {
   // --- Paradas de servicio / viaje colectivo --------------------------------
 
   Future<void> marcarLlegadaParada(int solicitudId, int paradaId) async {
-    await _dio.post(
-      '/api/solicitudes/$solicitudId/paradas/$paradaId/llegada',
-    );
+    await _dio.post('/api/solicitudes/$solicitudId/paradas/$paradaId/llegada');
   }
 
   Future<void> completarParada(int solicitudId, int paradaId) async {
@@ -820,9 +819,7 @@ class ApiService {
   // Usado tanto para refrescar el estado en vivo (llegada_en,
   // fin_solicitado_en, segundos_restantes_confirmacion...) como para la
   // reanudación al reabrir la app.
-  Future<Map<String, dynamic>?> obtenerDetalleSolicitud(
-    int solicitudId,
-  ) async {
+  Future<Map<String, dynamic>?> obtenerDetalleSolicitud(int solicitudId) async {
     try {
       final response = await _dio.get('/api/solicitudes/$solicitudId/detalle');
       final data = response.data;
@@ -994,4 +991,7 @@ class ApiService {
       data: {'confirmacion': 'ELIMINAR', 'motivo': ?motivo},
     );
   }
+
+  /// Cliente HTTP con sesión, para los servicios de cada módulo.
+  Dio get cliente => _dio;
 }
