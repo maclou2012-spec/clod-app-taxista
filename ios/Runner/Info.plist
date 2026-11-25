@@ -27,9 +27,18 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>CLOD necesita acceso a tu cámara para verificar tu identidad</string>
+	<string>TaxiCLOD usa tu cámara para verificar tu identidad y fotografiar tus documentos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>TaxiCLOD usa tus fotos para que puedas subir tus documentos y tu foto de perfil.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>TaxiCLOD necesita tu ubicación para difundir tu disponibilidad y guiarte durante un viaje</string>
+	<string>TaxiCLOD usa tu ubicación mientras estás disponible para mostrarte solicitudes de viaje cercanas y para que el pasajero vea por dónde vas.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Mientras estás disponible, TaxiCLOD sigue usando tu ubicación aunque cambies a otra app (por ejemplo, a la navegación), para mostrarte solicitudes cercanas y que el pasajero vea por dónde vas. Deja de usarla en cuanto te desconectas.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
