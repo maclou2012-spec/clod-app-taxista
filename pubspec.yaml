@@ -53,6 +53,7 @@ dependencies:
   flutter_stripe: ^11.5.0
   clay_containers: ^0.3.4
   font_awesome_flutter: ^11.0.0
+  package_info_plus: ^10.2.2
 
 dev_dependencies:
   flutter_test:
