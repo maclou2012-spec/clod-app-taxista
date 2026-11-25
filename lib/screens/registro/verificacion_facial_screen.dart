@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -32,6 +33,15 @@ class _VerificacionFacialScreenState extends State<VerificacionFacialScreen> {
       ? 'Esta será tu referencia de identidad'
       : 'Confirma tu identidad para conectarte';
 
+  /// `400 "Primero debes completar tu registro de identidad"`: no hay selfie
+  /// de referencia guardada.
+  bool _sinReferencia(DioException e) {
+    final data = e.response?.data;
+    final mensaje = data is Map ? '${data['mensaje'] ?? ''}' : '';
+    return e.response?.statusCode == 400 &&
+        mensaje.toLowerCase().contains('registro de identidad');
+  }
+
   Future<void> _iniciarVerificacion() async {
     setState(() => _errorMensaje = null);
 
@@ -53,10 +63,31 @@ class _VerificacionFacialScreenState extends State<VerificacionFacialScreen> {
           context.go('/vehiculo');
         }
       } else {
-        final respuesta = await _apiService.verificarIdentidadFacial(
-          foto,
-          widget.tipo,
-        );
+        final Map<String, dynamic> respuesta;
+        try {
+          respuesta = await _apiService.verificarIdentidadFacial(
+            foto,
+            widget.tipo,
+          );
+        } on DioException catch (e) {
+          // La cuenta no tiene selfie de referencia (p. ej. la cuenta de
+          // prueba de la revisión de las tiendas): esta misma foto queda como
+          // referencia y la verificación se da por buena (LANZAMIENTO_APPS §13).
+          if (!_sinReferencia(e)) rethrow;
+          await _apiService.subirFotoReferencia(foto);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Guardamos esta foto como tu referencia de identidad.'),
+            ),
+          );
+          if (context.canPop()) {
+            context.pop(true);
+          } else {
+            context.go('/dashboard');
+          }
+          return;
+        }
         final esCoincidencia = respuesta['esCoincidencia'] == true;
 
         if (!mounted) return;

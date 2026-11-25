@@ -237,7 +237,7 @@ class _VehiculoScreenState extends State<VehiculoScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'El que uses en tus turnos',
+                'El que usas cuando te conectas',
                 textAlign: TextAlign.center,
                 style: CLODTextStyles.bodyMedium.copyWith(
                   color: CLODColors.texto(context).withValues(alpha: 0.6),
