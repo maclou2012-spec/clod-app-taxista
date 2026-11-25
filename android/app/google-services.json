@@ -59,6 +59,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "160857431021-1scaja2pebej8nm7to8qljlrdqb3st7t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.clod.repartidor",
+            "certificate_hash": "00cf0e80b18a8d317cebb4ad43711ec28880f0c5"
+          }
+        },
+        {
           "client_id": "160857431021-d0nnqil5a336ncdhs667bg6so7hfrksb.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
