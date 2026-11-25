@@ -14,10 +14,55 @@
       },
       "oauth_client": [
         {
+          "client_id": "160857431021-1rc96edergicps4g9krqnnn2pj329oni.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.clod.pasajero",
+            "certificate_hash": "88abda5e2b1f1a41b88ca997ce3b1f92ea3c2d27"
+          }
+        },
+        {
           "client_id": "160857431021-bd3furbuhmlj28fpmnihcpitcub0mne8.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.clod.pasajero",
+            "certificate_hash": "8ad237b339c3cfef0be3e514ba7a213b6f0762f1"
+          }
+        },
+        {
+          "client_id": "160857431021-0o5dlq3hmqqckvocqiis7260222ti79b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9t_raklSq_Rh8BY-Sj_SnCtt4pbbfQkU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "160857431021-0o5dlq3hmqqckvocqiis7260222ti79b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:160857431021:android:06c8823aa4277976fa65e4",
+        "android_client_info": {
+          "package_name": "com.clod.repartidor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "160857431021-d0nnqil5a336ncdhs667bg6so7hfrksb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.clod.repartidor",
             "certificate_hash": "8ad237b339c3cfef0be3e514ba7a213b6f0762f1"
           }
         },
@@ -56,6 +101,14 @@
           "android_info": {
             "package_name": "com.clod.taxiclod",
             "certificate_hash": "8ad237b339c3cfef0be3e514ba7a213b6f0762f1"
+          }
+        },
+        {
+          "client_id": "160857431021-okam1cp0mrv0eulvsvkq525e8m2aqpdt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.clod.taxiclod",
+            "certificate_hash": "c0a85272006525a02d57b3d971ae3b30cf6941c1"
           }
         },
         {
