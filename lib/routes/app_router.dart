@@ -5,6 +5,7 @@ import '../models/calificar_pasajero_args.dart';
 import '../models/viaje_en_curso_args.dart';
 import '../screens/cuenta/ayuda_screen.dart';
 import '../screens/cuenta/contacto_emergencia_screen.dart';
+import '../screens/cuenta/eliminar_cuenta_screen.dart';
 import '../screens/cuenta/historial_screen.dart';
 import '../screens/cuenta/mis_documentos_screen.dart';
 import '../screens/cuenta/perfil_screen.dart';
@@ -103,6 +104,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const EnRevisionScreen(),
     ),
     GoRoute(path: '/perfil', builder: (context, state) => const PerfilScreen()),
+    GoRoute(
+      path: '/eliminar-cuenta',
+      builder: (context, state) => EliminarCuentaScreen(
+        avisos: state.extra is List<String>
+            ? state.extra as List<String>
+            : const [],
+      ),
+    ),
     GoRoute(
       path: '/historial',
       builder: (context, state) => const HistorialScreen(),
