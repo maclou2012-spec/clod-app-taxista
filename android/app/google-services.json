@@ -7,6 +7,43 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:160857431021:android:eb18c3da4030a3c7fa65e4",
+        "android_client_info": {
+          "package_name": "com.clod.fletero"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "160857431021-t4bj0hlngb53kfbi1a10j661eff4r6m6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.clod.fletero",
+            "certificate_hash": "d74498cd61d66a282f96200be461644fcd203cfe"
+          }
+        },
+        {
+          "client_id": "160857431021-0o5dlq3hmqqckvocqiis7260222ti79b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9t_raklSq_Rh8BY-Sj_SnCtt4pbbfQkU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "160857431021-0o5dlq3hmqqckvocqiis7260222ti79b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:160857431021:android:26695aa97a9e54c1fa65e4",
         "android_client_info": {
           "package_name": "com.clod.pasajero"
