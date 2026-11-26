@@ -6,6 +6,10 @@ import '../models/viaje_en_curso_args.dart';
 import '../screens/cuenta/ayuda_screen.dart';
 import '../screens/cuenta/contacto_emergencia_screen.dart';
 import '../screens/cuenta/eliminar_cuenta_screen.dart';
+import '../screens/foraneos/billetera_foranea_screen.dart';
+import '../screens/foraneos/foraneos_screen.dart';
+import '../screens/foraneos/publicar_viaje_screen.dart';
+import '../screens/foraneos/viaje_conductor_screen.dart';
 import '../screens/cuenta/historial_screen.dart';
 import '../screens/cuenta/mis_documentos_screen.dart';
 import '../screens/cuenta/perfil_screen.dart';
@@ -105,6 +109,24 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(path: '/perfil', builder: (context, state) => const PerfilScreen()),
     GoRoute(
+      path: '/foraneos',
+      builder: (context, state) => const ForaneosScreen(),
+    ),
+    GoRoute(
+      path: '/foraneos/publicar',
+      builder: (context, state) => const PublicarViajeScreen(),
+    ),
+    GoRoute(
+      path: '/foraneos/viaje/:id',
+      builder: (context, state) => ViajeConductorScreen(
+        viajeId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+      ),
+    ),
+    GoRoute(
+      path: '/foraneos/billetera',
+      builder: (context, state) => const BilleteraForaneaScreen(),
+    ),
+    GoRoute(
       path: '/eliminar-cuenta',
       builder: (context, state) => EliminarCuentaScreen(
         avisos: state.extra is List<String>
@@ -125,10 +147,7 @@ final GoRouter appRouter = GoRouter(
     // adicionales). Un enlace viejo (ej. guardado en el historial del
     // navegador de alguien, o un deep link externo desactualizado) cae
     // aquí y se manda al panel en vez de un 404.
-    GoRoute(
-      path: '/configuracion',
-      redirect: (context, state) => '/dashboard',
-    ),
+    GoRoute(path: '/configuracion', redirect: (context, state) => '/dashboard'),
     GoRoute(
       path: '/contacto-emergencia',
       builder: (context, state) => const ContactoEmergenciaScreen(),

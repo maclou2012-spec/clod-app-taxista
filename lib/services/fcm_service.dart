@@ -83,6 +83,17 @@ class FcmService {
       appRouter.go('/solicitudes-pendientes');
       return;
     }
+    // Viajes foráneos: reserva nueva o cambio de una reserva.
+    final evento = message.data['evento'];
+    if (evento == 'reserva_foranea_nueva' ||
+        evento == 'reserva_foranea_estado') {
+      final viajeId = int.tryParse('${message.data['viaje_id'] ?? ''}');
+      appRouter.go('/dashboard');
+      appRouter.push(
+        viajeId != null ? '/foraneos/viaje/$viajeId' : '/foraneos',
+      );
+      return;
+    }
     appRouter.go('/dashboard');
   }
 

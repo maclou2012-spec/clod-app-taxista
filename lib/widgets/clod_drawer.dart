@@ -114,9 +114,11 @@ class _ClodDrawerState extends State<ClodDrawer> {
       final mensaje = data is Map<String, dynamic>
           ? data['mensaje'] as String?
           : null;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(mensaje ?? 'No se pudo actualizar tu disponibilidad.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensaje ?? 'No se pudo actualizar tu disponibilidad.'),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -229,9 +231,7 @@ class _ClodDrawerState extends State<ClodDrawer> {
                                             : _nombre,
                                         style: CLODTextStyles.headingSmall
                                             .copyWith(
-                                              color: CLODColors.texto(
-                                                context,
-                                              ),
+                                              color: CLODColors.texto(context),
                                             ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -304,23 +304,17 @@ class _ClodDrawerState extends State<ClodDrawer> {
                                 ),
                                 if (!disponibilidad.membresiaVigente)
                                   Padding(
-                                    padding: const EdgeInsets.only(
-                                      bottom: 10,
-                                    ),
+                                    padding: const EdgeInsets.only(bottom: 10),
                                     child: SizedBox(
                                       width: double.infinity,
                                       child: ElevatedButton(
-                                        onPressed: () => _irARenovarMembresia(
-                                          context,
-                                        ),
+                                        onPressed: () =>
+                                            _irARenovarMembresia(context),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              CLODColors.azulCLOD,
+                                          backgroundColor: CLODColors.azulCLOD,
                                           foregroundColor: Colors.white,
                                         ),
-                                        child: const Text(
-                                          'Renovar membresía',
-                                        ),
+                                        child: const Text('Renovar membresía'),
                                       ),
                                     ),
                                   )
@@ -328,17 +322,14 @@ class _ClodDrawerState extends State<ClodDrawer> {
                                         .mensajeVencimientoProximo !=
                                     null)
                                   Padding(
-                                    padding: const EdgeInsets.only(
-                                      bottom: 10,
-                                    ),
+                                    padding: const EdgeInsets.only(bottom: 10),
                                     child: Text(
                                       disponibilidad.mensajeVencimientoProximo!,
-                                      style: CLODTextStyles.bodySmall
-                                          .copyWith(
-                                            color: CLODColors.texto(
-                                              context,
-                                            ).withValues(alpha: 0.7),
-                                          ),
+                                      style: CLODTextStyles.bodySmall.copyWith(
+                                        color: CLODColors.texto(
+                                          context,
+                                        ).withValues(alpha: 0.7),
+                                      ),
                                     ),
                                   ),
                               ],
@@ -413,6 +404,14 @@ class _ClodDrawerState extends State<ClodDrawer> {
                               onTap: () {
                                 Navigator.of(context).pop();
                                 context.push('/historial');
+                              },
+                            ),
+                            _ItemMenu(
+                              icono: FontAwesomeIcons.route,
+                              titulo: 'Viajes foráneos',
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                context.push('/foraneos');
                               },
                             ),
                             _ItemMenu(
