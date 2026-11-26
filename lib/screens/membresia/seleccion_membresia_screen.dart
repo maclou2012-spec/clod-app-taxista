@@ -3,11 +3,13 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../services/api_service.dart';
+import '../../services/stripe_config.dart';
 import '../../theme/clod_theme.dart';
 import '../../widgets/clod_app_bar.dart';
 import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_error_text.dart';
 import '../../widgets/clod_primary_button.dart';
+import '../../widgets/puerta_actualizacion.dart';
 
 // TODO: Los montos de membresía están hardcodeados porque aún no existe un
 // endpoint de consulta de precios. Conectar a configuracion_sistema cuando
@@ -215,6 +217,14 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
     });
 
     try {
+      if (!await prepararStripe()) {
+        if (mounted) {
+          setState(() {
+            _errorMensaje = 'Pago con tarjeta no disponible por ahora.';
+          });
+        }
+        return;
+      }
       final clientSecret = await _apiService.crearPaymentIntent(
         tipo,
         solicitaFactura,
@@ -299,6 +309,7 @@ class _SeleccionMembresiaScreenState extends State<SeleccionMembresiaScreen> {
                   color: CLODColors.texto(context).withValues(alpha: 0.6),
                 ),
               ),
+              const Center(child: EtiquetaModoPrueba()),
               const SizedBox(height: 32),
               for (final plan in _planes) ...[
                 _TarjetaPlan(

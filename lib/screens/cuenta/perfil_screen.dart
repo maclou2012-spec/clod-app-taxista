@@ -1,10 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../services/api_service.dart';
 import '../../theme/clod_theme.dart';
+import '../../utils/errores_api.dart';
+import '../../utils/json.dart';
 import '../../widgets/clod_app_bar.dart';
 import '../../widgets/clod_drawer.dart';
 import '../../widgets/clod_error_text.dart';
@@ -34,6 +37,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   String? _claseNombre;
   String? _fotoPerfilUrl;
   bool _subiendoFoto = false;
+  bool _revisandoBaja = false;
 
   @override
   void initState() {
@@ -147,6 +151,48 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
+  /// Revisa con el backend si la cuenta se puede borrar (un viaje en curso o
+  /// saldo por depositar la bloquean) antes de ir a la confirmación.
+  Future<void> _eliminarCuenta() async {
+    setState(() => _revisandoBaja = true);
+    try {
+      final data = await _apiService.obtenerElegibilidadBaja();
+      if (!mounted) return;
+      List<String> mensajes(Object? lista) => aListaMapas(
+        lista,
+      ).map((m) => aTexto(m['mensaje'])).whereType<String>().toList();
+      final bloqueos = mensajes(data['bloqueos']);
+      if (aBooleano(data['puede_eliminar']) == true) {
+        context.push('/eliminar-cuenta', extra: mensajes(data['avisos']));
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Todavía no puedes eliminar tu cuenta'),
+          content: Text(
+            bloqueos.isEmpty
+                ? 'Termina tus viajes en curso e intenta de nuevo.'
+                : bloqueos.join('\n\n'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Entendido'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(ErrorApi.desde(e).mensaje)));
+    } finally {
+      if (mounted) setState(() => _revisandoBaja = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -196,6 +242,30 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       textAlign: TextAlign.center,
                       style: CLODTextStyles.bodyMedium.copyWith(
                         color: CLODColors.texto(context).withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+                    TextButton.icon(
+                      onPressed: _revisandoBaja ? null : _eliminarCuenta,
+                      icon: _revisandoBaja
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              Icons.delete_outline,
+                              color: CLODColors.texto(
+                                context,
+                              ).withValues(alpha: 0.7),
+                            ),
+                      label: Text(
+                        'Eliminar mi cuenta',
+                        style: CLODTextStyles.bodyMedium.copyWith(
+                          color: CLODColors.texto(
+                            context,
+                          ).withValues(alpha: 0.7),
+                        ),
                       ),
                     ),
                   ],

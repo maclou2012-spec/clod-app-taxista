@@ -980,4 +980,18 @@ class ApiService {
       rethrow;
     }
   }
+
+  /// GET /api/perfil/cuenta/elegibilidad → `{ puede_eliminar, bloqueos[], avisos[] }`.
+  Future<Map<String, dynamic>> obtenerElegibilidadBaja() async {
+    final response = await _dio.get('/api/perfil/cuenta/elegibilidad');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// POST /api/perfil/cuenta/eliminar — el backend exige `confirmacion: 'ELIMINAR'`.
+  Future<void> eliminarCuenta({String? motivo}) async {
+    await _dio.post(
+      '/api/perfil/cuenta/eliminar',
+      data: {'confirmacion': 'ELIMINAR', 'motivo': ?motivo},
+    );
+  }
 }

@@ -1,6 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -10,16 +9,18 @@ import 'providers/auth_provider.dart';
 import 'providers/disponibilidad_provider.dart';
 import 'providers/theme_provider.dart';
 import 'routes/app_router.dart';
+import 'services/config_app_service.dart';
 import 'theme/clod_theme.dart';
+import 'widgets/puerta_actualizacion.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   MapboxOptions.setAccessToken(mapboxPublicToken);
 
-  Stripe.publishableKey =
-      'pk_test_51QWS2W08H3cXOv0qK2RLNVr2Sb6RQ1o5ifUD8RTXiipQYjqvDBe1zLidwWtIiAgZkCFff2DrSZjkpALSy2BF0NZC00op9M30Gb';
-  await Stripe.instance.applySettings();
+  // Llave de Stripe, versión mínima y modo. La llave se aplica al pagar
+  // (services/stripe_config.dart), nunca fija en el código.
+  await ConfigAppService().inicializar();
 
   final themeProvider = ThemeProvider();
   await themeProvider.cargarPreferencia();
@@ -55,6 +56,8 @@ class MyApp extends StatelessWidget {
             darkTheme: CLODTheme.dark,
             themeMode: context.watch<ThemeProvider>().modo,
             routerConfig: appRouter,
+            builder: (context, child) =>
+                PuertaActualizacion(child: child ?? const SizedBox.shrink()),
           );
         },
       ),
