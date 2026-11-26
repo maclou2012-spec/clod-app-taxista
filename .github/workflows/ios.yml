@@ -1,9 +1,10 @@
-name: iOS (compilación sin firma)
+name: iOS (IPA sin firma)
 
-# Comprueba que la app compila para iOS. El resultado NO se puede instalar en un iPhone:
-# falta la firma de Apple (Apple Developer Program). No sube ningún archivo.
-# Solo corre a mano (Actions → Run workflow) o al subir una etiqueta ios-*, para no gastar
-# minutos de macOS: en repos privados cuentan unas 10 veces más que los de Linux.
+# Compila la app para iOS y deja un IPA SIN FIRMA como artefacto del run (se borra a los 5 días).
+# Ese IPA no se instala tocándolo en el iPhone: hay que firmarlo en una PC con Sideloadly y un
+# Apple ID gratuito (la app dura 7 días y caben 3 apps a la vez). Pasos: docs/IOS_SIN_COSTO.md
+# del workspace. Solo corre a mano (Actions → Run workflow) o al subir una etiqueta ios-*, para
+# no gastar minutos de macOS: en repos privados cuentan unas 10 veces más que los de Linux.
 on:
   workflow_dispatch:
   push:
@@ -13,10 +14,13 @@ concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  APP: TaxiCLOD
+
 jobs:
   compilar:
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -29,5 +33,26 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
 
+      # MAPBOX_PUBLIC_TOKEN es un secreto del repo (Settings → Secrets and variables → Actions).
+      # Si no existe, la app compila igual pero el mapa sale en blanco.
       - name: Compilar para iOS sin firma
-        run: flutter build ios --release --no-codesign
+        env:
+          MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
+        run: flutter build ios --release --no-codesign --dart-define=MAPBOX_PUBLIC_TOKEN="$MAPBOX_PUBLIC_TOKEN"
+
+      - name: Empaquetar el IPA
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          NOMBRE="${APP}-${VERSION}-${GITHUB_SHA::7}-sin-firma.ipa"
+          mkdir -p salida/Payload
+          cp -R build/ios/iphoneos/Runner.app salida/Payload/
+          (cd salida && zip -qry "$NOMBRE" Payload)
+          ls -lh "salida/$NOMBRE"
+          echo "IPA=salida/$NOMBRE" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-ios-sin-firma
+          path: ${{ env.IPA }}
+          retention-days: 5
+          compression-level: 0
