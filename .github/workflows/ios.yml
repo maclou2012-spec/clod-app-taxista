@@ -1,0 +1,33 @@
+name: iOS (compilación sin firma)
+
+# Comprueba que la app compila para iOS. El resultado NO se puede instalar en un iPhone:
+# falta la firma de Apple (Apple Developer Program). No sube ningún archivo.
+# Solo corre a mano (Actions → Run workflow) o al subir una etiqueta ios-*, para no gastar
+# minutos de macOS: en repos privados cuentan unas 10 veces más que los de Linux.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['ios-*']
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compilar:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.8
+          channel: stable
+          cache: true
+
+      - run: flutter --version
+      - run: flutter pub get
+
+      - name: Compilar para iOS sin firma
+        run: flutter build ios --release --no-codesign
