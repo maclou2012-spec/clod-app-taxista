@@ -41,7 +41,14 @@ class FcmService {
 
     await FirebaseMessaging.instance.requestPermission();
 
-    final token = await FirebaseMessaging.instance.getToken();
+    // En iOS sin APNs (firma gratuita, sin Apple Developer Program) no hay token y getToken()
+    // lanza un error. La app sigue funcionando: las solicitudes llegan por Socket.io.
+    String? token;
+    try {
+      token = await FirebaseMessaging.instance.getToken();
+    } catch (e) {
+      debugPrint('FCM sin token: $e');
+    }
     if (token != null) await _registrarToken(token);
 
     _tokenRefreshSub = FirebaseMessaging.instance.onTokenRefresh.listen(
